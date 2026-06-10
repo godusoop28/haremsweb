@@ -514,6 +514,20 @@ export const plans: Plan[] = [
     highlighted: false,
   },
   {
+    id: "trial",
+    name: "Pase 3 días",
+    price: "$49 MXN",
+    period: "/ 3 días",
+    description: "Prueba la experiencia completa de HAREMS sin compromiso.",
+    features: [
+      "Acceso a las 12 chicas IA durante 3 días",
+      "Chat extendido sin límites diarios",
+      "Generación de imágenes limitada",
+      "Sin renovación automática",
+    ],
+    highlighted: false,
+  },
+  {
     id: "premium",
     name: "Premium",
     price: "$199 MXN",
