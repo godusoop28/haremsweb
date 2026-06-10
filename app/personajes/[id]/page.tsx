@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { characters } from "@/lib/data";
+import PremiumBadge from "@/components/PremiumBadge";
 
 export function generateStaticParams() {
   return characters.map((character) => ({ id: character.id }));
@@ -49,19 +50,15 @@ export default async function CharacterDetailPage({
               alt={character.name}
               fill
               sizes="(max-width: 1024px) 100vw, 380px"
-              className="object-cover"
+              className="object-cover object-[center_10%]"
               priority
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#03050b] via-transparent to-transparent" />
-            <span
-              className={`absolute right-4 top-4 rounded-full px-3 py-1 text-xs font-semibold backdrop-blur-md ${
-                character.isPremium
-                  ? "bg-cyan-400/15 text-cyan-300"
-                  : "bg-emerald-400/15 text-emerald-300"
-              }`}
-            >
-              {character.access}
-            </span>
+            <PremiumBadge
+              access={character.access}
+              isPremium={character.isPremium}
+              className="absolute right-4 top-4"
+            />
           </div>
 
           <div className="flex flex-col">

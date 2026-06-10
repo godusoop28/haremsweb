@@ -31,7 +31,7 @@ export default function Avatar({ name, image, size = "md", className = "" }: Ava
         alt={name}
         fill
         sizes={`${sizeToPx[size]}px`}
-        className="object-cover"
+        className="object-cover object-[center_18%]"
       />
     </div>
   );

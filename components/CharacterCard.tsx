@@ -1,29 +1,26 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Character } from "@/lib/data";
+import PremiumBadge from "./PremiumBadge";
 
 export default function CharacterCard({ character }: { character: Character }) {
   return (
-    <div className="glass group relative flex flex-col overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:border-cyan-400/30 hover:shadow-[0_0_35px_-12px_rgba(34,211,238,0.5)]">
+    <div className="glass group relative flex flex-col overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:border-cyan-400/30 hover:shadow-[0_0_40px_-12px_rgba(34,211,238,0.55)]">
       <div className="relative aspect-[3/4] w-full overflow-hidden">
         <Image
           src={character.image}
           alt={character.name}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          className="object-cover object-[center_12%] transition-transform duration-500 group-hover:scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#03050b] via-[#03050b]/10 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#03050b] via-[#03050b]/15 to-transparent" />
 
-        <span
-          className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-semibold backdrop-blur-md ${
-            character.isPremium
-              ? "bg-cyan-400/15 text-cyan-300"
-              : "bg-emerald-400/15 text-emerald-300"
-          }`}
-        >
-          {character.access}
-        </span>
+        <PremiumBadge
+          access={character.access}
+          isPremium={character.isPremium}
+          className="absolute right-3 top-3"
+        />
 
         {character.isPremium && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
