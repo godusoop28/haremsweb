@@ -1,5 +1,5 @@
+import Image from "next/image";
 import Link from "next/link";
-import Avatar from "./Avatar";
 import { characters } from "@/lib/data";
 
 export default function FeaturedCharacters() {
@@ -27,11 +27,20 @@ export default function FeaturedCharacters() {
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {featured.map((character) => (
-            <div
+            <Link
               key={character.id}
+              href={`/personajes/${character.id}`}
               className="glass group flex items-center gap-4 rounded-2xl p-5 transition-all hover:-translate-y-1 hover:border-cyan-400/30"
             >
-              <Avatar name={character.name} gradient={character.gradient} size="lg" />
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full ring-2 ring-white/10">
+                <Image
+                  src={character.image}
+                  alt={character.name}
+                  fill
+                  sizes="64px"
+                  className="object-cover"
+                />
+              </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="truncate text-base font-semibold text-white">
@@ -39,17 +48,17 @@ export default function FeaturedCharacters() {
                   </h3>
                   <span
                     className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                      character.isFree
-                        ? "bg-emerald-400/15 text-emerald-300"
-                        : "bg-cyan-400/15 text-cyan-300"
+                      character.isPremium
+                        ? "bg-cyan-400/15 text-cyan-300"
+                        : "bg-emerald-400/15 text-emerald-300"
                     }`}
                   >
-                    {character.isFree ? "Gratis" : "Premium"}
+                    {character.access}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-slate-400">{character.personality}</p>
+                <p className="mt-1 truncate text-sm text-slate-400">{character.archetype}</p>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

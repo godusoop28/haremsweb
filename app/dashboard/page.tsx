@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default function DashboardPage() {
-  const availableCharacters = characters.filter((c) => c.isFree);
+  const availableCharacters = characters.filter((c) => !c.isPremium);
 
   return (
     <section className="px-4 py-16 sm:px-6 lg:px-8">
@@ -62,7 +62,7 @@ export default function DashboardPage() {
                   href={`/chat?personaje=${c.id}`}
                   className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/5 p-3 transition-colors hover:border-cyan-400/30"
                 >
-                  <Avatar name={c.name} gradient={c.gradient} size="sm" />
+                  <Avatar name={c.name} image={c.image} size="sm" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-white">{c.name}</p>
                     <p className="truncate text-xs text-slate-400">{c.personality}</p>
@@ -91,7 +91,7 @@ export default function DashboardPage() {
                     href={`/chat?personaje=${c.id}`}
                     className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/5 p-3 transition-colors hover:border-cyan-400/30"
                   >
-                    <Avatar name={c.name} gradient={c.gradient} size="sm" />
+                    <Avatar name={c.name} image={c.image} size="sm" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <p className="truncate text-sm font-medium text-white">{c.name}</p>
