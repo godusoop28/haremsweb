@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
+import ConnectionMeter from "@/components/ConnectionMeter";
 import PremiumBadge from "@/components/PremiumBadge";
 import { characters } from "@/lib/data";
 
@@ -9,81 +10,6 @@ interface Message {
   from: "user" | "ai";
   text: string;
 }
-
-const repliesByPersonality: Record<string, string[]> = {
-  "luna-valmont": [
-    "Aww, qué lindo que me digas eso, me sacaste una sonrisa.",
-    "Cuéntame más, me encanta escucharte con calma.",
-    "Eso me hace sentir muy especial, sigue así.",
-    "Justo estaba pensando en ti, qué casualidad.",
-  ],
-  "hana-mori": [
-    "Jajaja eres muy gracioso, no me lo esperaba.",
-    "Eyyy, eso suena divertido, cuéntame más!",
-    "Vale vale, tienes mi atención, sigue.",
-    "Jeje me encanta tu energía hoy.",
-  ],
-  "aurora-sterling": [
-    "Interesante... pocas personas logran sorprenderme así.",
-    "Continúa, tienes mi atención por ahora.",
-    "Hmm, eso dice bastante de ti.",
-    "No está mal. Veamos qué más tienes.",
-  ],
-  "valeria-cruz": [
-    "Me gusta tu confianza, sigue hablando así.",
-    "Jaja me caes bien, tienes buena energía.",
-    "Eso suena interesante, cuéntame con calma.",
-    "Mmm, me gusta cómo piensas.",
-  ],
-  "camila-rios": [
-    "Espera, deja anoto eso... interesante.",
-    "Mmm, tiene lógica lo que dices.",
-    "No esperaba esa respuesta, sigue.",
-    "Bien, tienes mi atención por un momento.",
-  ],
-  "kiara-blake": [
-    "Jaja no está mal para un novato.",
-    "GG, esa respuesta tuvo nivel.",
-    "Veamos si puedes seguirme el ritmo.",
-    "Ok eso me dio un poco de risa, sigue.",
-  ],
-  "isabella-laurent": [
-    "Comprendo. Es una perspectiva interesante.",
-    "Continúa, escucho con atención.",
-    "Eso requiere cierta madurez para decirlo.",
-    "Hablas con calma, eso me agrada.",
-  ],
-  "nara-voss": [
-    "...",
-    "Eso no lo esperaba.",
-    "Sigue. Te escucho.",
-    "Hay algo en lo que dices que me interesa.",
-  ],
-  "sasha-monroe": [
-    "Jajaja me encanta tu actitud!",
-    "Eso suena a un buen plan, cuéntame más.",
-    "Holaaa, qué buena energía tienes hoy.",
-    "Me gusta, sigamos hablando de eso.",
-  ],
-  "mei-tanaka": [
-    "Ah... gracias por contarme eso.",
-    "Me alegra que confíes en mí.",
-    "Eso es muy lindo de tu parte.",
-    "Está bien, tómate tu tiempo, te escucho.",
-  ],
-  "renata-soler": [
-    "Me gusta cómo piensas, sin filtros.",
-    "Interesante punto de vista, sigue.",
-    "Eso suena auténtico, me agrada.",
-    "Cuéntame más, tienes mi atención.",
-  ],
-  "victoria-hale": [
-    "No esperaba que dijeras eso esta noche...",
-    "Hay algo en tus palabras que me hace dudar.",
-    "Continúa... aunque no sé si debería escuchar esto.",
-    "Eso despierta algo en mí que prefería evitar.",
-  ],
-};
 
 const defaultReplies = [
   "Estoy aquí contigo...",
@@ -126,7 +52,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
     setIsTyping(true);
 
     setTimeout(() => {
-      const pool = repliesByPersonality[selectedId] ?? defaultReplies;
+      const pool = character.sampleMessages.length ? character.sampleMessages : defaultReplies;
       const reply = pool[Math.floor(Math.random() * pool.length)];
       setIsTyping(false);
       setMessagesByChar((prev) => ({
@@ -195,11 +121,11 @@ export default function ChatClient({ initialId }: { initialId: string }) {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate text-sm font-medium text-white">{c.name}</span>
-                  {c.isPremium && (
-                    <span className="shrink-0 rounded-full bg-cyan-400/15 px-2 py-0.5 text-[10px] font-semibold text-cyan-300">
-                      PRO
-                    </span>
-                  )}
+                  <PremiumBadge
+                    access={c.isPremium ? "Premium" : "Gratis"}
+                    isPremium={c.isPremium}
+                    className="shrink-0 px-2 py-0.5 text-[10px]"
+                  />
                 </div>
                 <p className="truncate text-xs text-slate-400">{c.archetype}</p>
               </div>
@@ -210,22 +136,30 @@ export default function ChatClient({ initialId }: { initialId: string }) {
 
       <div className="flex flex-1 flex-col">
         {/* Header */}
-        <div className="glass-strong flex items-center gap-3 border-b border-white/5 px-4 py-3 sm:px-6">
-          <Avatar name={character.name} image={character.image} size="lg" />
-          <div className="min-w-0 flex-1">
-            <h2 className="truncate text-base font-semibold text-white sm:text-lg">
-              {character.name}
-            </h2>
-            <p className="truncate text-xs text-cyan-300/80 sm:text-sm">{character.archetype}</p>
-            <span className="mt-0.5 flex items-center gap-1.5 text-xs text-emerald-400">
-              <span className="h-1.5 w-1.5 animate-pulse-glow rounded-full bg-emerald-400" />
-              En línea
-            </span>
+        <div className="glass-strong border-b border-white/5 px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-3">
+            <Avatar name={character.name} image={character.image} size="lg" />
+            <div className="min-w-0 flex-1">
+              <h2 className="truncate text-base font-semibold text-white sm:text-lg">
+                {character.name}
+              </h2>
+              <p className="truncate text-xs text-cyan-300/80 sm:text-sm">{character.archetype}</p>
+              <span className="mt-0.5 flex items-center gap-1.5 text-xs text-emerald-400">
+                <span className="h-1.5 w-1.5 animate-pulse-glow rounded-full bg-emerald-400" />
+                En línea
+              </span>
+            </div>
+            <div className="flex shrink-0 flex-col items-end gap-1.5">
+              <PremiumBadge access={character.access} isPremium={character.isPremium} />
+              <span className="text-[11px] text-slate-500">Dificultad: {character.difficulty}</span>
+            </div>
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-1.5">
-            <PremiumBadge access={character.access} isPremium={character.isPremium} />
-            <span className="text-[11px] text-slate-500">Dificultad: {character.difficulty}</span>
-          </div>
+          <ConnectionMeter
+            trustLevel={character.trustLevel}
+            relationshipStatus={character.relationshipStatus}
+            variant="compact"
+            className="mt-3 hidden sm:flex"
+          />
         </div>
 
         {/* Messages */}

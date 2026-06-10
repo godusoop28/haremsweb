@@ -51,13 +51,13 @@ export default function Hero() {
 
         <div className="mx-auto mt-20 grid max-w-5xl grid-cols-2 gap-4 sm:grid-cols-4 lg:mx-0">
           {[
-            { value: "12", label: "Personalidades únicas" },
-            { value: "24/7", label: "Disponibilidad" },
-            { value: "100%", label: "Privado y seguro" },
-            { value: "18+", label: "Acceso verificado" },
+            { value: "12 chicas IA", label: "Personalidades únicas" },
+            { value: "Chat", label: "Personalizado" },
+            { value: "Premium", label: "Personajes exclusivos" },
+            { value: "Privada", label: "Experiencia 100% tuya" },
           ].map((stat) => (
             <div key={stat.label} className="glass rounded-2xl px-4 py-6 text-center">
-              <div className="text-2xl font-bold text-gradient sm:text-3xl">{stat.value}</div>
+              <div className="text-lg font-bold text-gradient sm:text-2xl">{stat.value}</div>
               <div className="mt-1 text-xs text-slate-400 sm:text-sm">{stat.label}</div>
             </div>
           ))}
