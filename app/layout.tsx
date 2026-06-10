@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   title: "HAREMS — Chat con chicas IA personalizadas",
   description:
     "Plataforma de chat con personajes de inteligencia artificial. Doce personalidades únicas, conversaciones privadas y planes premium.",
+};
+
+export const viewport: Viewport = {
+  colorScheme: "dark",
+  themeColor: "#05070d",
 };
 
 export default function RootLayout({
