@@ -3,8 +3,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { characters } from "@/lib/data";
+import { getMergedCharacter } from "@/lib/characters";
 import ConnectionMeter from "@/components/ConnectionMeter";
 import PremiumBadge from "@/components/PremiumBadge";
+import CharacterDetailActions from "@/components/CharacterDetailActions";
 
 export function generateStaticParams() {
   return characters.map((character) => ({ id: character.id }));
@@ -28,7 +30,7 @@ export default async function CharacterDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const character = characters.find((c) => c.id === id);
+  const character = await getMergedCharacter(id);
 
   if (!character) {
     notFound();
@@ -169,26 +171,7 @@ export default async function CharacterDetailPage({
               />
             </div>
 
-            <div className="mt-8 flex flex-col gap-3 sm:w-fit sm:flex-row">
-              <Link
-                href={`/chat?personaje=${character.id}`}
-                className={`w-full rounded-full px-6 py-3 text-center text-sm font-semibold transition-transform hover:scale-105 sm:w-fit ${
-                  character.isPremium
-                    ? "border border-cyan-400/30 bg-white/5 text-cyan-200"
-                    : "glow-button bg-gradient-to-r from-cyan-400 to-blue-600 text-white"
-                }`}
-              >
-                {character.isPremium ? "Desbloquear y empezar conversación" : "Empezar conversación"}
-              </Link>
-              {character.isPremium && (
-                <Link
-                  href="/planes"
-                  className="glass w-full rounded-full px-6 py-3 text-center text-sm font-semibold text-cyan-200 transition-colors hover:border-cyan-400/40 sm:w-fit"
-                >
-                  Ver planes
-                </Link>
-              )}
-            </div>
+            <CharacterDetailActions character={character} />
           </div>
         </div>
       </div>

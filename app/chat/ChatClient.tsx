@@ -1,66 +1,241 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import ConnectionMeter from "@/components/ConnectionMeter";
 import PremiumBadge from "@/components/PremiumBadge";
+import UpgradeModal from "@/components/UpgradeModal";
 import { characters } from "@/lib/data";
+import { api, ApiError, type CharacterResponse, type PlanType } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 interface Message {
-  from: "user" | "ai";
+  from: "user" | "ai" | "system";
   text: string;
+  imageUrl?: string;
 }
 
-const defaultReplies = [
-  "Estoy aquí contigo...",
-  "Cuéntame más, te escucho con atención.",
-  "Eso me hace sonreír, sigue contándome.",
-  "Interesante... dime más sobre eso.",
-];
+const planRank: Record<PlanType, number> = {
+  FREE: 0,
+  TRIAL_3_DAYS: 1,
+  PREMIUM: 1,
+  VIP: 2,
+};
+
+const accessRank: Record<CharacterResponse["accessType"], number> = {
+  FREE: 0,
+  PREMIUM: 1,
+  VIP: 2,
+};
+
+function canAccess(plan: PlanType | undefined, accessType: CharacterResponse["accessType"]) {
+  if (!plan) return accessType === "FREE";
+  return planRank[plan] >= accessRank[accessType];
+}
 
 export default function ChatClient({ initialId }: { initialId: string }) {
+  const { user, token, loading: authLoading } = useAuth();
+  const router = useRouter();
+
   const initialCharacter = characters.find((c) => c.id === initialId) ?? characters[0];
   const [selectedId, setSelectedId] = useState(initialCharacter.id);
-  const [messagesByChar, setMessagesByChar] = useState<Record<string, Message[]>>(() => {
-    const initial: Record<string, Message[]> = {};
-    characters.forEach((c) => {
-      initial[c.id] = [{ from: "ai", text: c.greeting }];
-    });
-    return initial;
-  });
+  const [messagesByChar, setMessagesByChar] = useState<Record<string, Message[]>>({});
+  const [conversationIds, setConversationIds] = useState<Record<string, number>>({});
+  const [loadedChars, setLoadedChars] = useState<Record<string, boolean>>({});
+  const [remoteCharacters, setRemoteCharacters] = useState<CharacterResponse[]>([]);
   const [input, setInput] = useState("");
-  const [imageNotice, setImageNotice] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const [usage, setUsage] = useState<Record<string, { used: number; limit: number | null }>>({});
+  const [upgradeModal, setUpgradeModal] = useState<{ title: string; message: string } | null>(
+    null
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const character = characters.find((c) => c.id === selectedId)!;
+  const remote = remoteCharacters.find((c) => c.slug === selectedId);
   const messages = messagesByChar[selectedId] ?? [];
+
+  useEffect(() => {
+    if (!authLoading && !token) {
+      router.replace(`/login?next=/chat?personaje=${initialId}`);
+    }
+  }, [authLoading, token, router, initialId]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    api.getCharacters().then(setRemoteCharacters).catch(() => {});
+
+    api
+      .getConversations(token)
+      .then((conversations) => {
+        const ids: Record<string, number> = {};
+        conversations.forEach((c) => {
+          ids[c.characterSlug] = c.id;
+        });
+        setConversationIds(ids);
+      })
+      .catch(() => {});
+  }, [token]);
+
+  useEffect(() => {
+    if (!token || loadedChars[selectedId]) return;
+
+    const conversationId = conversationIds[selectedId];
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- marks this character as loaded before fetching its history
+    setLoadedChars((prev) => ({ ...prev, [selectedId]: true }));
+
+    if (conversationId === undefined) {
+      setMessagesByChar((prev) => ({
+        ...prev,
+        [selectedId]: [{ from: "ai", text: character.greeting }],
+      }));
+      return;
+    }
+
+    api
+      .getConversation(token, conversationId)
+      .then((conversation) => {
+        const loaded: Message[] = conversation.messages.map((m) => ({
+          from: m.sender === "USER" ? "user" : "ai",
+          text: m.content,
+        }));
+        setMessagesByChar((prev) => ({
+          ...prev,
+          [selectedId]: loaded.length ? loaded : [{ from: "ai", text: character.greeting }],
+        }));
+      })
+      .catch(() => {
+        setMessagesByChar((prev) => ({
+          ...prev,
+          [selectedId]: [{ from: "ai", text: character.greeting }],
+        }));
+      });
+  }, [token, selectedId, conversationIds, loadedChars, character.greeting]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages.length, isTyping]);
 
-  function sendMessage() {
-    const trimmed = input.trim();
-    if (!trimmed) return;
-
+  function appendMessage(charId: string, message: Message) {
     setMessagesByChar((prev) => ({
       ...prev,
-      [selectedId]: [...(prev[selectedId] ?? []), { from: "user", text: trimmed }],
+      [charId]: [...(prev[charId] ?? []), message],
     }));
+  }
+
+  const charUsage = usage[selectedId];
+  const limitReached =
+    charUsage?.limit != null && charUsage.used >= charUsage.limit;
+
+  async function sendMessage() {
+    const trimmed = input.trim();
+    if (!trimmed || !token || isTyping || limitReached) return;
+
+    appendMessage(selectedId, { from: "user", text: trimmed });
     setInput("");
     setIsTyping(true);
 
-    setTimeout(() => {
-      const pool = character.sampleMessages.length ? character.sampleMessages : defaultReplies;
-      const reply = pool[Math.floor(Math.random() * pool.length)];
-      setIsTyping(false);
-      setMessagesByChar((prev) => ({
+    try {
+      const response = await api.sendChatMessage(token, {
+        characterSlug: selectedId,
+        message: trimmed,
+      });
+      appendMessage(selectedId, { from: "ai", text: response.reply });
+      setConversationIds((prev) => ({ ...prev, [selectedId]: response.conversationId }));
+      setUsage((prev) => ({
         ...prev,
-        [selectedId]: [...(prev[selectedId] ?? []), { from: "ai", text: reply }],
+        [selectedId]: { used: response.messagesUsed, limit: response.messagesLimit },
       }));
-    }, 1200);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        router.replace(`/login?next=/chat?personaje=${selectedId}`);
+        return;
+      }
+      if (err instanceof ApiError && err.status === 403) {
+        setUpgradeModal({
+          title: "Límite gratuito alcanzado",
+          message: err.message,
+        });
+        return;
+      }
+      const message =
+        err instanceof ApiError ? err.message : "Ocurrió un error inesperado. Inténtalo más tarde.";
+      appendMessage(selectedId, { from: "system", text: message });
+    } finally {
+      setIsTyping(false);
+    }
   }
+
+  async function generateImage() {
+    if (!token || generatingImage) return;
+
+    if (user?.plan === "FREE") {
+      setUpgradeModal({
+        title: "Disponible en Premium",
+        message: "La generación de imágenes está disponible solo para usuarios Premium o VIP.",
+      });
+      return;
+    }
+
+    setGeneratingImage(true);
+
+    try {
+      const response = await api.generateImage(token, {
+        characterSlug: selectedId,
+        type: "portrait",
+      });
+      appendMessage(selectedId, {
+        from: "ai",
+        text: `Aquí tienes tu imagen. Créditos restantes: ${response.creditsRemaining}.`,
+        imageUrl: response.imageUrl,
+      });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        router.replace(`/login?next=/chat?personaje=${selectedId}`);
+        return;
+      }
+      if (err instanceof ApiError && err.status === 403) {
+        setUpgradeModal({
+          title: "Sin créditos disponibles",
+          message: err.message,
+        });
+        return;
+      }
+      const message =
+        err instanceof ApiError ? err.message : "Ocurrió un error inesperado. Inténtalo más tarde.";
+      appendMessage(selectedId, { from: "system", text: message });
+    } finally {
+      setGeneratingImage(false);
+    }
+  }
+
+  function selectCharacter(c: CharacterResponse | undefined, id: string) {
+    if (c && !canAccess(user?.plan, c.accessType)) {
+      setUpgradeModal({
+        title: "Personaje bloqueado",
+        message:
+          c.accessType === "VIP"
+            ? "Este personaje está disponible en el plan VIP."
+            : "Este personaje está disponible en planes Premium.",
+      });
+      return;
+    }
+    setSelectedId(id);
+  }
+
+  if (authLoading || !token) {
+    return (
+      <div className="flex h-[calc(100vh-65px)] items-center justify-center">
+        <p className="text-sm text-slate-400">Cargando...</p>
+      </div>
+    );
+  }
+
+  const imageEnabled = (remote?.imageGenerationEnabled ?? false) && user?.plan !== "FREE";
 
   return (
     <div className="chat-bg flex h-[calc(100vh-65px)] flex-col lg:mx-auto lg:max-w-7xl lg:flex-row">
@@ -69,10 +244,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         {characters.map((c) => (
           <button
             key={c.id}
-            onClick={() => {
-              setSelectedId(c.id);
-              setImageNotice(false);
-            }}
+            onClick={() => selectCharacter(remoteCharacters.find((r) => r.slug === c.id), c.id)}
             className="flex shrink-0 flex-col items-center gap-1.5"
           >
             <Avatar
@@ -104,33 +276,34 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           </h2>
         </div>
         <div className="flex-1 space-y-1 p-2">
-          {characters.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => {
-                setSelectedId(c.id);
-                setImageNotice(false);
-              }}
-              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all ${
-                selectedId === c.id
-                  ? "glass-strong border border-cyan-400/30 shadow-[0_0_25px_-12px_rgba(34,211,238,0.6)]"
-                  : "border border-transparent hover:border-white/10 hover:bg-white/5"
-              }`}
-            >
-              <Avatar name={c.name} image={c.image} size="sm" />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-sm font-medium text-white">{c.name}</span>
-                  <PremiumBadge
-                    access={c.isPremium ? "Premium" : "Gratis"}
-                    isPremium={c.isPremium}
-                    className="shrink-0 px-2 py-0.5 text-[10px]"
-                  />
+          {characters.map((c) => {
+            const remoteC = remoteCharacters.find((r) => r.slug === c.id);
+            const locked = remoteC ? !canAccess(user?.plan, remoteC.accessType) : c.isPremium;
+            return (
+              <button
+                key={c.id}
+                onClick={() => selectCharacter(remoteC, c.id)}
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all ${
+                  selectedId === c.id
+                    ? "glass-strong border border-cyan-400/30 shadow-[0_0_25px_-12px_rgba(34,211,238,0.6)]"
+                    : "border border-transparent hover:border-white/10 hover:bg-white/5"
+                }`}
+              >
+                <Avatar name={c.name} image={c.image} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-sm font-medium text-white">{c.name}</span>
+                    <PremiumBadge
+                      access={c.isPremium ? "Premium" : "Gratis"}
+                      isPremium={locked}
+                      className="shrink-0 px-2 py-0.5 text-[10px]"
+                    />
+                  </div>
+                  <p className="truncate text-xs text-slate-400">{c.archetype}</p>
                 </div>
-                <p className="truncate text-xs text-slate-400">{c.archetype}</p>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       </aside>
 
@@ -160,6 +333,21 @@ export default function ChatClient({ initialId }: { initialId: string }) {
             variant="compact"
             className="mt-3 hidden sm:flex"
           />
+          {user?.plan === "FREE" && charUsage?.limit != null && (
+            <div className="mt-3 flex items-center justify-between gap-3 text-xs">
+              <span className={limitReached ? "text-amber-300" : "text-slate-400"}>
+                Mensajes gratis: {charUsage.used} / {charUsage.limit}
+              </span>
+              {limitReached && (
+                <Link
+                  href="/planes"
+                  className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 font-semibold text-cyan-300 transition-colors hover:bg-cyan-400/20"
+                >
+                  Mejorar plan
+                </Link>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Messages */}
@@ -179,10 +367,20 @@ export default function ChatClient({ initialId }: { initialId: string }) {
                 className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-lg sm:max-w-[60%] ${
                   message.from === "user"
                     ? "glow-button bg-gradient-to-br from-cyan-400 to-blue-600 text-white"
-                    : "border border-white/5 bg-slate-900/70 text-slate-200 backdrop-blur-md"
+                    : message.from === "system"
+                      ? "border border-amber-400/20 bg-amber-400/5 text-amber-200"
+                      : "border border-white/5 bg-slate-900/70 text-slate-200 backdrop-blur-md"
                 }`}
               >
                 {message.text}
+                {message.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={message.imageUrl}
+                    alt="Imagen generada"
+                    className="mt-2 w-full max-w-xs rounded-xl"
+                  />
+                )}
               </div>
             </div>
           ))}
@@ -199,27 +397,20 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           )}
         </div>
 
-        {imageNotice && (
-          <div className="mx-4 mb-2 rounded-xl border border-cyan-400/20 bg-cyan-400/5 px-4 py-2 text-xs text-cyan-300 sm:mx-6">
-            La generación de imágenes es solo una vista previa visual. Esta función se
-            conectará próximamente a un servicio real.
-          </div>
-        )}
-
         {/* Input bar */}
         <div className="glass-strong border-t border-white/5 px-4 py-4 sm:px-6">
           <div className="flex items-center gap-2 sm:gap-3">
             <button
-              disabled={!character.isPremium}
-              onClick={() => setImageNotice(true)}
-              title={!character.isPremium ? "Disponible en Premium" : "Generar imagen"}
+              disabled={!imageEnabled || generatingImage}
+              onClick={generateImage}
+              title={!imageEnabled ? "Disponible en Premium" : "Generar imagen"}
               className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-2.5 text-xs font-medium transition-colors sm:px-4 ${
-                !character.isPremium
+                !imageEnabled || generatingImage
                   ? "cursor-not-allowed border-white/5 bg-white/5 text-slate-500"
                   : "border-cyan-400/30 bg-cyan-400/10 text-cyan-300 hover:bg-cyan-400/20"
               }`}
             >
-              {!character.isPremium ? (
+              {!imageEnabled ? (
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
                 </svg>
@@ -229,7 +420,11 @@ export default function ChatClient({ initialId }: { initialId: string }) {
                 </svg>
               )}
               <span className="hidden sm:inline">
-                {!character.isPremium ? "Disponible en Premium" : "Generar imagen"}
+                {generatingImage
+                  ? "Generando..."
+                  : !imageEnabled
+                    ? "Disponible en Premium"
+                    : "Generar imagen"}
               </span>
             </button>
 
@@ -238,13 +433,17 @@ export default function ChatClient({ initialId }: { initialId: string }) {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendMessage()}
               type="text"
-              placeholder="Escribe un mensaje..."
-              className="flex-1 rounded-full border border-cyan-400/15 bg-black/30 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 backdrop-blur-md focus:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+              disabled={limitReached}
+              placeholder={
+                limitReached ? "Límite de mensajes gratuitos alcanzado" : "Escribe un mensaje..."
+              }
+              className="flex-1 rounded-full border border-cyan-400/15 bg-black/30 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 backdrop-blur-md focus:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50"
             />
 
             <button
               onClick={sendMessage}
-              className="glow-button flex shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 p-2.5 text-white transition-transform hover:scale-105"
+              disabled={limitReached}
+              className="glow-button flex shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 p-2.5 text-white transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Enviar mensaje"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -254,6 +453,14 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           </div>
         </div>
       </div>
+
+      {upgradeModal && (
+        <UpgradeModal
+          title={upgradeModal.title}
+          message={upgradeModal.message}
+          onClose={() => setUpgradeModal(null)}
+        />
+      )}
     </div>
   );
 }

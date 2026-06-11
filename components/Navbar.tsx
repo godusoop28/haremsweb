@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "@/lib/auth-context";
 
 const links = [
   { href: "/", label: "Inicio" },
@@ -12,6 +14,14 @@ const links = [
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const { user, logout, loading } = useAuth();
+  const router = useRouter();
+
+  function handleLogout() {
+    logout();
+    setOpen(false);
+    router.push("/");
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/5 bg-[#05070d]/80 backdrop-blur-xl">
@@ -32,21 +42,45 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          {user && (
+            <Link
+              href="/dashboard"
+              className="text-sm font-medium text-slate-300 transition-colors hover:text-cyan-300"
+            >
+              Mi cuenta
+            </Link>
+          )}
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
-          <Link
-            href="/login"
-            className="text-sm font-medium text-slate-300 transition-colors hover:text-cyan-300"
-          >
-            Iniciar sesión
-          </Link>
-          <Link
-            href="/registro"
-            className="glow-button rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-2 text-sm font-semibold text-white transition-transform hover:scale-105"
-          >
-            Empezar
-          </Link>
+          {loading ? null : user ? (
+            <>
+              <span className="text-sm font-medium text-slate-400">
+                Hola, {user.name.split(" ")[0]}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="rounded-full border border-white/10 bg-white/5 px-5 py-2 text-sm font-semibold text-slate-200 transition-transform hover:scale-105"
+              >
+                Cerrar sesión
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="text-sm font-medium text-slate-300 transition-colors hover:text-cyan-300"
+              >
+                Iniciar sesión
+              </Link>
+              <Link
+                href="/registro"
+                className="glow-button rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-2 text-sm font-semibold text-white transition-transform hover:scale-105"
+              >
+                Empezar
+              </Link>
+            </>
+          )}
         </div>
 
         <button
@@ -82,20 +116,40 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="/login"
-              onClick={() => setOpen(false)}
-              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-cyan-300"
-            >
-              Iniciar sesión
-            </Link>
-            <Link
-              href="/registro"
-              onClick={() => setOpen(false)}
-              className="glow-button mt-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-2.5 text-center text-sm font-semibold text-white"
-            >
-              Empezar
-            </Link>
+            {user ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-cyan-300"
+                >
+                  Mi cuenta
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="mt-2 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-center text-sm font-semibold text-slate-200"
+                >
+                  Cerrar sesión
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-cyan-300"
+                >
+                  Iniciar sesión
+                </Link>
+                <Link
+                  href="/registro"
+                  onClick={() => setOpen(false)}
+                  className="glow-button mt-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-2.5 text-center text-sm font-semibold text-white"
+                >
+                  Empezar
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}

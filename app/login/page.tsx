@@ -8,6 +8,7 @@ export const metadata: Metadata = {
 export default function LoginPage() {
   return (
     <AuthCard
+      mode="login"
       title="Bienvenido de nuevo"
       subtitle="Inicia sesión para continuar tus conversaciones."
       submitLabel="Iniciar sesión"

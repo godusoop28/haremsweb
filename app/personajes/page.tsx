@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import CharacterCard from "@/components/CharacterCard";
-import { characters } from "@/lib/data";
+import { getMergedCharacters } from "@/lib/characters";
 
 export const metadata: Metadata = {
   title: "Personajes — HAREMS",
 };
 
-export default function PersonajesPage() {
+export default async function PersonajesPage() {
+  const characters = await getMergedCharacters();
+
   return (
     <section className="px-4 py-16 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">

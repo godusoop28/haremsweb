@@ -8,6 +8,7 @@ export const metadata: Metadata = {
 export default function RegistroPage() {
   return (
     <AuthCard
+      mode="register"
       title="Crea tu cuenta"
       subtitle="Regístrate para acceder a Luna y Hana de forma gratuita."
       submitLabel="Crear cuenta"

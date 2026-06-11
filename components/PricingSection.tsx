@@ -1,7 +1,44 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { plans } from "@/lib/data";
+import { api, ApiError, type PlanType } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+
+const planTypeMap: Record<string, PlanType> = {
+  free: "FREE",
+  trial: "TRIAL_3_DAYS",
+  premium: "PREMIUM",
+  vip: "VIP",
+};
 
 export default function PricingSection() {
+  const { user, token, refresh } = useAuth();
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ id: string; message: string; ok: boolean } | null>(
+    null
+  );
+
+  async function handleChoose(planId: string) {
+    if (!token) return;
+    setPendingId(planId);
+    setFeedback(null);
+    try {
+      await api.simulateSubscription(token, planTypeMap[planId]);
+      await refresh();
+      setFeedback({ id: planId, message: "¡Plan actualizado!", ok: true });
+    } catch (err) {
+      setFeedback({
+        id: planId,
+        message: err instanceof ApiError ? err.message : "No se pudo actualizar el plan.",
+        ok: false,
+      });
+    } finally {
+      setPendingId(null);
+    }
+  }
+
   return (
     <section className="px-4 py-20 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
@@ -55,16 +92,41 @@ export default function PricingSection() {
                 ))}
               </ul>
 
-              <Link
-                href="/registro"
-                className={`mt-8 w-full rounded-full px-5 py-3 text-center text-sm font-semibold transition-transform hover:scale-105 ${
-                  plan.highlighted
-                    ? "glow-button bg-gradient-to-r from-cyan-400 to-blue-600 text-white"
-                    : "border border-white/10 bg-white/5 text-slate-200"
-                }`}
-              >
-                Elegir plan
-              </Link>
+              {user ? (
+                <>
+                  <button
+                    onClick={() => handleChoose(plan.id)}
+                    disabled={pendingId !== null}
+                    className={`mt-8 w-full rounded-full px-5 py-3 text-center text-sm font-semibold transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 ${
+                      plan.highlighted
+                        ? "glow-button bg-gradient-to-r from-cyan-400 to-blue-600 text-white"
+                        : "border border-white/10 bg-white/5 text-slate-200"
+                    }`}
+                  >
+                    {pendingId === plan.id ? "Procesando..." : "Elegir plan"}
+                  </button>
+                  {feedback?.id === plan.id && (
+                    <p
+                      className={`mt-2 text-center text-xs ${
+                        feedback.ok ? "text-emerald-300" : "text-red-300"
+                      }`}
+                    >
+                      {feedback.message}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <Link
+                  href="/registro"
+                  className={`mt-8 w-full rounded-full px-5 py-3 text-center text-sm font-semibold transition-transform hover:scale-105 ${
+                    plan.highlighted
+                      ? "glow-button bg-gradient-to-r from-cyan-400 to-blue-600 text-white"
+                      : "border border-white/10 bg-white/5 text-slate-200"
+                  }`}
+                >
+                  Elegir plan
+                </Link>
+              )}
             </div>
           ))}
         </div>
