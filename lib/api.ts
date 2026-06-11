@@ -1,4 +1,10 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === "development" ? "http://localhost:8080/api" : "");
+
+if (!API_URL) {
+  throw new Error("NEXT_PUBLIC_API_URL no está configurada");
+}
 
 export const TOKEN_KEY = "harems_token";
 
