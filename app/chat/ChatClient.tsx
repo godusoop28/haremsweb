@@ -229,7 +229,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
 
   if (authLoading || !token) {
     return (
-      <div className="flex h-[calc(100vh-65px)] items-center justify-center">
+      <div className="flex h-[calc(100dvh-65px)] items-center justify-center">
         <p className="text-sm text-slate-400">Cargando...</p>
       </div>
     );
@@ -238,19 +238,19 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   const imageEnabled = (remote?.imageGenerationEnabled ?? false) && user?.plan !== "FREE";
 
   return (
-    <div className="chat-bg flex h-[calc(100vh-65px)] flex-col lg:mx-auto lg:max-w-7xl lg:flex-row">
+    <div className="chat-bg flex h-[calc(100dvh-65px)] flex-col overflow-hidden lg:mx-auto lg:max-w-7xl lg:flex-row">
       {/* Mobile / tablet character selector */}
-      <div className="scroll-neon flex shrink-0 gap-3 overflow-x-auto border-b border-white/5 bg-black/20 px-4 py-3 backdrop-blur-xl lg:hidden">
+      <div className="scroll-neon flex shrink-0 gap-2.5 overflow-x-auto border-b border-white/5 bg-black/20 px-3 py-2.5 backdrop-blur-xl lg:hidden">
         {characters.map((c) => (
           <button
             key={c.id}
             onClick={() => selectCharacter(remoteCharacters.find((r) => r.slug === c.id), c.id)}
-            className="flex shrink-0 flex-col items-center gap-1.5"
+            className="flex shrink-0 flex-col items-center gap-1"
           >
             <Avatar
               name={c.name}
               image={c.image}
-              size="md"
+              size="sm"
               className={`transition-all ${
                 selectedId === c.id
                   ? "ring-2 ring-cyan-400 shadow-[0_0_18px_-4px_rgba(34,211,238,0.8)]"
@@ -258,7 +258,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
               }`}
             />
             <span
-              className={`max-w-[64px] truncate text-[11px] font-medium ${
+              className={`max-w-[56px] truncate text-[10px] font-medium ${
                 selectedId === c.id ? "text-cyan-300" : "text-slate-400"
               }`}
             >
@@ -307,13 +307,13 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         </div>
       </aside>
 
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
         {/* Header */}
-        <div className="glass-strong border-b border-white/5 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            <Avatar name={character.name} image={character.image} size="lg" />
+        <div className="glass-strong shrink-0 border-b border-white/5 px-3 py-2.5 sm:px-6 sm:py-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <Avatar name={character.name} image={character.image} size="md" className="sm:h-20 sm:w-20" />
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-base font-semibold text-white sm:text-lg">
+              <h2 className="truncate text-sm font-semibold text-white sm:text-lg">
                 {character.name}
               </h2>
               <p className="truncate text-xs text-cyan-300/80 sm:text-sm">{character.archetype}</p>
@@ -324,7 +324,9 @@ export default function ChatClient({ initialId }: { initialId: string }) {
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1.5">
               <PremiumBadge access={character.access} isPremium={character.isPremium} />
-              <span className="text-[11px] text-slate-500">Dificultad: {character.difficulty}</span>
+              <span className="hidden text-[11px] text-slate-500 sm:inline">
+                Dificultad: {character.difficulty}
+              </span>
             </div>
           </div>
           <ConnectionMeter
@@ -334,7 +336,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
             className="mt-3 hidden sm:flex"
           />
           {user?.plan === "FREE" && charUsage?.limit != null && (
-            <div className="mt-3 flex items-center justify-between gap-3 text-xs">
+            <div className="mt-2 flex items-center justify-between gap-3 text-xs sm:mt-3">
               <span className={limitReached ? "text-amber-300" : "text-slate-400"}>
                 Mensajes gratis: {charUsage.used} / {charUsage.limit}
               </span>
@@ -353,7 +355,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         {/* Messages */}
         <div
           ref={scrollRef}
-          className="scroll-neon flex-1 space-y-4 overflow-y-auto px-4 py-6 sm:px-6"
+          className="scroll-neon min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 sm:px-6 sm:py-6"
         >
           {messages.map((message, idx) => (
             <div
@@ -364,7 +366,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
                 <Avatar name={character.name} image={character.image} size="sm" className="mr-2 mt-auto hidden sm:block" />
               )}
               <div
-                className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-lg sm:max-w-[60%] ${
+                className={`max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-lg sm:max-w-[60%] ${
                   message.from === "user"
                     ? "glow-button bg-gradient-to-br from-cyan-400 to-blue-600 text-white"
                     : message.from === "system"
@@ -398,7 +400,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         </div>
 
         {/* Input bar */}
-        <div className="glass-strong border-t border-white/5 px-4 py-4 sm:px-6">
+        <div className="glass-strong shrink-0 border-t border-white/5 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               disabled={!imageEnabled || generatingImage}
