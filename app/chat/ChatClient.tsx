@@ -59,16 +59,24 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   const remote = remoteCharacters.find((c) => c.slug === selectedId);
   const messages = messagesByChar[selectedId] ?? [];
 
+  // ── Auth guard ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!authLoading && !token) {
       router.replace(`/login?next=/chat?personaje=${initialId}`);
     }
   }, [authLoading, token, router, initialId]);
 
+  // ── Load characters + subscription (image credits) ───────────────────────────
   useEffect(() => {
     if (!token) return;
 
     api.getCharacters().then(setRemoteCharacters).catch(() => {});
+
+    // Fetch current image credit balance once on load
+    api
+      .getSubscription(token)
+      .then((sub) => setImageCredits(sub.imageCredits))
+      .catch(() => {});
 
     api
       .getConversations(token)
@@ -82,11 +90,12 @@ export default function ChatClient({ initialId }: { initialId: string }) {
       .catch(() => {});
   }, [token]);
 
+  // ── Load conversation history per character ───────────────────────────────────
   useEffect(() => {
     if (!token || loadedChars[selectedId]) return;
 
     const conversationId = conversationIds[selectedId];
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- marks this character as loaded before fetching its history
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadedChars((prev) => ({ ...prev, [selectedId]: true }));
 
     if (conversationId === undefined) {
@@ -117,6 +126,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
       });
   }, [token, selectedId, conversationIds, loadedChars, character.greeting]);
 
+  // ── Auto-scroll ──────────────────────────────────────────────────────────────
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages.length, isTyping]);
@@ -129,9 +139,15 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   }
 
   const charUsage = usage[selectedId];
-  const limitReached =
-    charUsage?.limit != null && charUsage.used >= charUsage.limit;
+  const limitReached = charUsage?.limit != null && charUsage.used >= charUsage.limit;
 
+  // ── Image generation capability ──────────────────────────────────────────────
+  const isPaidUser = user?.plan !== "FREE";
+  const characterSupportsImages = remote?.imageGenerationEnabled ?? false;
+  const hasCredits = imageCredits === null || imageCredits > 0; // null = not yet loaded → optimistic
+  const imageEnabled = isPaidUser && characterSupportsImages;
+
+  // ── Send chat message ────────────────────────────────────────────────────────
   async function sendMessage() {
     const trimmed = input.trim();
     if (!trimmed || !token || isTyping || limitReached) return;
@@ -171,13 +187,30 @@ export default function ChatClient({ initialId }: { initialId: string }) {
     }
   }
 
+  // ── Generate image ───────────────────────────────────────────────────────────
   async function generateImage() {
     if (!token || generatingImage) return;
 
-    if (user?.plan === "FREE") {
+    if (!isPaidUser) {
       setUpgradeModal({
         title: "Disponible en Premium",
         message: "La generación de imágenes está disponible solo para usuarios Premium o VIP.",
+      });
+      return;
+    }
+
+    if (!characterSupportsImages) {
+      appendMessage(selectedId, {
+        from: "system",
+        text: "Este personaje no tiene generación de imágenes habilitada.",
+      });
+      return;
+    }
+
+    if (imageCredits !== null && imageCredits <= 0) {
+      setUpgradeModal({
+        title: "Sin créditos de imagen",
+        message: "No tienes créditos de imagen disponibles. Mejora tu plan para obtener más.",
       });
       return;
     }
@@ -193,7 +226,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
       setImageCredits(response.creditsRemaining);
       appendMessage(selectedId, {
         from: "ai",
-        text: `Aquí tienes tu imagen. Créditos restantes: ${response.creditsRemaining}.`,
+        text: `Aquí tienes. Me quedaron ${response.creditsRemaining} crédito${response.creditsRemaining !== 1 ? "s" : ""}.`,
         imageUrl: response.imageUrl,
       });
     } catch (err) {
@@ -250,7 +283,16 @@ export default function ChatClient({ initialId }: { initialId: string }) {
     );
   }
 
-  const imageEnabled = (remote?.imageGenerationEnabled ?? false) && user?.plan !== "FREE";
+  // Button tooltip text
+  function imageButtonTitle() {
+    if (!isPaidUser) return "Disponible en Premium";
+    if (!characterSupportsImages) return "No disponible para este personaje";
+    if (imageCredits !== null && imageCredits <= 0) return "Sin créditos de imagen";
+    if (generatingImage) return "Generando imagen…";
+    return "Generar imagen";
+  }
+
+  const imageButtonDisabled = !imageEnabled || generatingImage || (imageCredits !== null && imageCredits <= 0);
 
   return (
     <div className="chat-bg flex h-[calc(100dvh-65px)] flex-col overflow-hidden lg:mx-auto lg:max-w-7xl lg:flex-row">
@@ -343,8 +385,14 @@ export default function ChatClient({ initialId }: { initialId: string }) {
                 Dificultad: {character.difficulty}
               </span>
               {imageEnabled && imageCredits !== null && (
-                <span className="text-[11px] text-cyan-400">
-                  Créditos foto: {imageCredits}
+                <span
+                  className={`text-[11px] font-medium ${
+                    imageCredits <= 0 ? "text-amber-400" : "text-cyan-400"
+                  }`}
+                >
+                  {imageCredits > 0
+                    ? `${imageCredits} crédito${imageCredits !== 1 ? "s" : ""} foto`
+                    : "Sin créditos foto"}
                 </span>
               )}
             </div>
@@ -422,17 +470,23 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         {/* Input bar */}
         <div className="glass-strong shrink-0 border-t border-white/5 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Image generation button */}
             <button
-              disabled={!imageEnabled || generatingImage}
+              disabled={imageButtonDisabled}
               onClick={generateImage}
-              title={!imageEnabled ? "Disponible en Premium" : "Generar imagen"}
+              title={imageButtonTitle()}
               className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-2.5 text-xs font-medium transition-colors sm:px-4 ${
-                !imageEnabled || generatingImage
+                imageButtonDisabled
                   ? "cursor-not-allowed border-white/5 bg-white/5 text-slate-500"
                   : "border-cyan-400/30 bg-cyan-400/10 text-cyan-300 hover:bg-cyan-400/20"
               }`}
             >
-              {!imageEnabled ? (
+              {generatingImage ? (
+                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : !imageEnabled ? (
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
                 </svg>
@@ -443,10 +497,12 @@ export default function ChatClient({ initialId }: { initialId: string }) {
               )}
               <span className="hidden sm:inline">
                 {generatingImage
-                  ? "Generando..."
-                  : !imageEnabled
-                    ? "Disponible en Premium"
-                    : "Generar imagen"}
+                  ? "Generando…"
+                  : !isPaidUser
+                    ? "Solo Premium"
+                    : imageCredits !== null && imageCredits <= 0
+                      ? "Sin créditos"
+                      : "Generar foto"}
               </span>
             </button>
 
@@ -457,7 +513,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
               type="text"
               disabled={limitReached}
               placeholder={
-                limitReached ? "Límite de mensajes gratuitos alcanzado" : "Escribe un mensaje..."
+                limitReached ? "Límite de mensajes gratuitos alcanzado" : "Escribe un mensaje…"
               }
               className="flex-1 rounded-full border border-cyan-400/15 bg-black/30 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 backdrop-blur-md focus:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50"
             />
