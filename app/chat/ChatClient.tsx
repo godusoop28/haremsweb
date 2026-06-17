@@ -48,6 +48,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
+  const [imageCredits, setImageCredits] = useState<number | null>(null);
   const [usage, setUsage] = useState<Record<string, { used: number; limit: number | null }>>({});
   const [upgradeModal, setUpgradeModal] = useState<{ title: string; message: string } | null>(
     null
@@ -186,8 +187,10 @@ export default function ChatClient({ initialId }: { initialId: string }) {
     try {
       const response = await api.generateImage(token, {
         characterSlug: selectedId,
-        type: "portrait",
+        aspectRatio: "portrait",
+        style: "premium-realistic-anime",
       });
+      setImageCredits(response.creditsRemaining);
       appendMessage(selectedId, {
         from: "ai",
         text: `Aquí tienes tu imagen. Créditos restantes: ${response.creditsRemaining}.`,
@@ -203,6 +206,10 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           title: "Sin créditos disponibles",
           message: err.message,
         });
+        return;
+      }
+      if (err instanceof ApiError && err.status === 422) {
+        appendMessage(selectedId, { from: "system", text: err.message });
         return;
       }
       const message =
@@ -327,6 +334,11 @@ export default function ChatClient({ initialId }: { initialId: string }) {
               <span className="hidden text-[11px] text-slate-500 sm:inline">
                 Dificultad: {character.difficulty}
               </span>
+              {imageEnabled && imageCredits !== null && (
+                <span className="text-[11px] text-cyan-400">
+                  Créditos foto: {imageCredits}
+                </span>
+              )}
             </div>
           </div>
           <ConnectionMeter

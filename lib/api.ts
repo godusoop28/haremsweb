@@ -127,9 +127,11 @@ export interface SubscriptionResponse {
 }
 
 export interface ImageGenerationResponse {
+  id: number;
   imageUrl: string;
-  creditsRemaining: number;
+  characterSlug: string;
   status: string;
+  creditsRemaining: number;
 }
 
 export const api = {
@@ -187,7 +189,16 @@ export const api = {
     });
   },
 
-  generateImage(token: string, data: { characterSlug: string; type: string }) {
+  generateImage(
+    token: string,
+    data: {
+      characterSlug: string;
+      userPrompt?: string;
+      style?: string;
+      mood?: string;
+      aspectRatio?: string;
+    }
+  ) {
     return request<ImageGenerationResponse>("/images/generate", {
       method: "POST",
       token,
