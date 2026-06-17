@@ -212,9 +212,17 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         appendMessage(selectedId, { from: "system", text: err.message });
         return;
       }
-      const message =
-        err instanceof ApiError ? err.message : "Ocurrió un error inesperado. Inténtalo más tarde.";
-      appendMessage(selectedId, { from: "system", text: message });
+      if (err instanceof ApiError && err.status === 400) {
+        appendMessage(selectedId, {
+          from: "system",
+          text: "No se puede generar ese tipo de imagen.",
+        });
+        return;
+      }
+      appendMessage(selectedId, {
+        from: "system",
+        text: "No pudimos generar la imagen. Inténtalo de nuevo.",
+      });
     } finally {
       setGeneratingImage(false);
     }
