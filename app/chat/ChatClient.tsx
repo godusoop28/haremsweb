@@ -49,6 +49,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   const [isTyping, setIsTyping] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [imageCredits, setImageCredits] = useState<number | null>(null);
+  const [imageLevel, setImageLevel] = useState<"SAFE" | "SENSUAL" | "NUDE">("SENSUAL");
   const [usage, setUsage] = useState<Record<string, { used: number; limit: number | null }>>({});
   const [upgradeModal, setUpgradeModal] = useState<{ title: string; message: string } | null>(
     null
@@ -222,6 +223,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         characterSlug: selectedId,
         aspectRatio: "portrait",
         style: "premium-realistic-anime",
+        adultLevel: imageLevel,
       });
       setImageCredits(response.creditsRemaining);
       appendMessage(selectedId, {
@@ -469,6 +471,28 @@ export default function ChatClient({ initialId }: { initialId: string }) {
 
         {/* Input bar */}
         <div className="glass-strong shrink-0 border-t border-white/5 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
+          {/* Level selector — only visible when image generation is available */}
+          {imageEnabled && (
+            <div className="mb-2 flex items-center gap-1.5">
+              <span className="text-[10px] text-slate-500">Foto:</span>
+              {(["SAFE", "SENSUAL", "NUDE"] as const).map((lvl) => {
+                const labels: Record<string, string> = { SAFE: "Normal", SENSUAL: "Sensual", NUDE: "Sin ropa" };
+                return (
+                  <button
+                    key={lvl}
+                    onClick={() => setImageLevel(lvl)}
+                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors ${
+                      imageLevel === lvl
+                        ? "bg-cyan-400/20 text-cyan-300 border border-cyan-400/40"
+                        : "bg-white/5 text-slate-400 border border-white/5 hover:bg-white/10"
+                    }`}
+                  >
+                    {labels[lvl]}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Image generation button */}
             <button

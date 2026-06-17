@@ -197,6 +197,9 @@ export const api = {
       style?: string;
       mood?: string;
       aspectRatio?: string;
+      adultLevel?: "SAFE" | "SENSUAL" | "NUDE" | "EXPLICIT";
+      scene?: string;
+      pose?: string;
     }
   ) {
     return request<ImageGenerationResponse>("/images/generate", {
