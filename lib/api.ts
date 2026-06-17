@@ -132,6 +132,9 @@ export interface ImageGenerationResponse {
   characterSlug: string;
   status: string;
   creditsRemaining: number;
+  creditsCost: number;
+  highTrust: boolean;
+  messageCount: number;
 }
 
 export const api = {

@@ -226,9 +226,12 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         adultLevel: imageLevel,
       });
       setImageCredits(response.creditsRemaining);
+      const costNote = !response.highTrust && response.creditsCost > 1
+        ? ` (costó ${response.creditsCost} créditos — todavía no me conoces bien)`
+        : "";
       appendMessage(selectedId, {
         from: "ai",
-        text: `Aquí tienes. Me quedaron ${response.creditsRemaining} crédito${response.creditsRemaining !== 1 ? "s" : ""}.`,
+        text: `Aquí tienes${costNote}. Créditos restantes: ${response.creditsRemaining}.`,
         imageUrl: response.imageUrl,
       });
     } catch (err) {
