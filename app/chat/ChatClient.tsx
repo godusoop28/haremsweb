@@ -51,6 +51,9 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   const [imageCredits, setImageCredits] = useState<number | null>(null);
   const [imageLevel, setImageLevel] = useState<"SAFE" | "SENSUAL" | "NUDE">("NUDE");
   const [usage, setUsage] = useState<Record<string, { used: number; limit: number | null }>>({});
+  // Gate: true cuando getConversations() ha terminado (con éxito o error).
+  // Evita que el historial se cargue antes de tener los IDs reales.
+  const [conversationsLoaded, setConversationsLoaded] = useState(false);
   const [upgradeModal, setUpgradeModal] = useState<{ title: string; message: string } | null>(
     null
   );
@@ -88,18 +91,26 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         });
         setConversationIds(ids);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        // Marcar como cargado siempre (éxito o error) para que el historial pueda cargar
+        setConversationsLoaded(true);
+      });
   }, [token]);
 
   // ── Load conversation history per character ───────────────────────────────────
+  // IMPORTANTE: esperamos a que conversationsLoaded=true antes de cargar el historial.
+  // Sin ese gate, el efecto corría con conversationIds={} (vacío) y marcaba el personaje
+  // como "ya cargado" antes de tener los IDs reales → historial nunca se cargaba → mensajes "desaparecían".
   useEffect(() => {
-    if (!token || loadedChars[selectedId]) return;
+    if (!token || !conversationsLoaded || loadedChars[selectedId]) return;
 
     const conversationId = conversationIds[selectedId];
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadedChars((prev) => ({ ...prev, [selectedId]: true }));
 
     if (conversationId === undefined) {
+      // Personaje sin conversación previa → mostrar saludo
       setMessagesByChar((prev) => ({
         ...prev,
         [selectedId]: [{ from: "ai", text: character.greeting }],
@@ -125,7 +136,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           [selectedId]: [{ from: "ai", text: character.greeting }],
         }));
       });
-  }, [token, selectedId, conversationIds, loadedChars, character.greeting]);
+  }, [token, selectedId, conversationIds, conversationsLoaded, loadedChars, character.greeting]);
 
   // ── Auto-scroll ──────────────────────────────────────────────────────────────
   useEffect(() => {
