@@ -49,7 +49,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   const [isTyping, setIsTyping] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [imageCredits, setImageCredits] = useState<number | null>(null);
-  const [imageLevel, setImageLevel] = useState<"SAFE" | "SENSUAL" | "NUDE">("SENSUAL");
+  const [imageLevel, setImageLevel] = useState<"SAFE" | "SENSUAL" | "NUDE">("NUDE");
   const [usage, setUsage] = useState<Record<string, { used: number; limit: number | null }>>({});
   const [upgradeModal, setUpgradeModal] = useState<{ title: string; message: string } | null>(
     null
