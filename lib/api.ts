@@ -10,11 +10,13 @@ export const TOKEN_KEY = "harems_token";
 
 export class ApiError extends Error {
   status: number;
+  code?: string;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -35,9 +37,11 @@ async function request<T>(
 
   if (!res.ok) {
     let message = "Ocurrió un error inesperado. Inténtalo más tarde.";
+    let code: string | undefined;
     try {
       const data = await res.json();
       if (data?.message) message = data.message;
+      if (data?.code) code = data.code;
     } catch {
       // response had no JSON body
     }
@@ -46,7 +50,7 @@ async function request<T>(
       window.localStorage.removeItem(TOKEN_KEY);
     }
 
-    throw new ApiError(message, res.status);
+    throw new ApiError(message, res.status, code);
   }
 
   if (res.status === 204) {

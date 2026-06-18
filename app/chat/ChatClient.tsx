@@ -258,7 +258,19 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         return;
       }
       if (err instanceof ApiError && err.status === 422) {
-        appendMessage(selectedId, { from: "system", text: err.message });
+        if (err.code === "IMAGE_PROVIDER_BLOCKED") {
+          // El proveedor bloqueó la imagen — créditos reembolsados por backend
+          appendMessage(selectedId, {
+            from: "system",
+            text: "El modelo no pudo generar esa imagen ahora. Intenta de nuevo o cambia el nivel (Normal/Sensual).",
+          });
+          // Refrescar créditos porque el backend los reembolsó
+          if (token) {
+            api.getSubscription(token).then((sub) => setImageCredits(sub.imageCredits)).catch(() => {});
+          }
+        } else {
+          appendMessage(selectedId, { from: "system", text: err.message });
+        }
         return;
       }
       if (err instanceof ApiError && err.status === 400) {
