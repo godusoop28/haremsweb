@@ -17,6 +17,13 @@ interface Message {
   imageUrl?: string;
 }
 
+interface UpgradeModalState {
+  title: string;
+  message: string;
+  benefits?: string[];
+  ctaLabel?: string;
+}
+
 const planRank: Record<PlanType, number> = {
   FREE: 0,
   TRIAL_3_DAYS: 1,
@@ -49,14 +56,12 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   const [isTyping, setIsTyping] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [imageCredits, setImageCredits] = useState<number | null>(null);
-  const [imageLevel, setImageLevel] = useState<"SAFE" | "SENSUAL" | "NUDE">("NUDE");
+  const [imageLevel, setImageLevel] = useState<"SAFE" | "SENSUAL" | "NUDE" | "EXPLICIT">("NUDE");
   const [usage, setUsage] = useState<Record<string, { used: number; limit: number | null }>>({});
   // Gate: true cuando getConversations() ha terminado (con éxito o error).
   // Evita que el historial se cargue antes de tener los IDs reales.
   const [conversationsLoaded, setConversationsLoaded] = useState(false);
-  const [upgradeModal, setUpgradeModal] = useState<{ title: string; message: string } | null>(
-    null
-  );
+  const [upgradeModal, setUpgradeModal] = useState<UpgradeModalState | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const character = characters.find((c) => c.id === selectedId)!;
@@ -188,6 +193,13 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         setUpgradeModal({
           title: "Límite gratuito alcanzado",
           message: err.message,
+          benefits: [
+            "Chat ilimitado con todas las chicas",
+            "12 personajes desbloqueadas",
+            "Generación de imágenes incluida",
+            "Cancela cuando quieras",
+          ],
+          ctaLabel: "Continuar con Premium",
         });
         return;
       }
@@ -205,8 +217,15 @@ export default function ChatClient({ initialId }: { initialId: string }) {
 
     if (!isPaidUser) {
       setUpgradeModal({
-        title: "Disponible en Premium",
-        message: "La generación de imágenes está disponible solo para usuarios Premium o VIP.",
+        title: "Imágenes disponibles en Premium",
+        message: "Genera fotos de tus personajes favoritas con créditos mensuales.",
+        benefits: [
+          "20 créditos de imagen al mes",
+          "Niveles Normal, Sensual y Sin ropa",
+          "Historial de imágenes guardado",
+          "Nivel Explícita disponible en VIP",
+        ],
+        ctaLabel: "Desbloquear Premium",
       });
       return;
     }
@@ -222,7 +241,13 @@ export default function ChatClient({ initialId }: { initialId: string }) {
     if (imageCredits !== null && imageCredits <= 0) {
       setUpgradeModal({
         title: "Sin créditos de imagen",
-        message: "No tienes créditos de imagen disponibles. Mejora tu plan para obtener más.",
+        message: "Agotaste tus créditos del mes. Mejora a VIP para obtener más o espera la renovación.",
+        benefits: [
+          "VIP incluye 50 créditos al mes",
+          "Nivel Explícita desbloqueado en VIP",
+          "Los créditos se renuevan cada mes",
+        ],
+        ctaLabel: "Ver planes",
       });
       return;
     }
@@ -254,15 +279,16 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         setUpgradeModal({
           title: "Sin créditos disponibles",
           message: err.message,
+          ctaLabel: "Ver planes",
         });
         return;
       }
       if (err instanceof ApiError && err.status === 422) {
         if (err.code === "IMAGE_PROVIDER_BLOCKED") {
-          // El proveedor bloqueó la imagen — créditos reembolsados por backend
+          // El proveedor no pudo generar — créditos reembolsados por backend
           appendMessage(selectedId, {
             from: "system",
-            text: "El modelo no pudo generar esa imagen ahora. Intenta de nuevo o cambia el nivel (Normal/Sensual).",
+            text: "Estamos preparando la imagen, inténtalo de nuevo en unos segundos.",
           });
           // Refrescar créditos porque el backend los reembolsó
           if (token) {
@@ -291,13 +317,32 @@ export default function ChatClient({ initialId }: { initialId: string }) {
 
   function selectCharacter(c: CharacterResponse | undefined, id: string) {
     if (c && !canAccess(user?.plan, c.accessType)) {
-      setUpgradeModal({
-        title: "Personaje bloqueado",
-        message:
-          c.accessType === "VIP"
-            ? "Este personaje está disponible en el plan VIP."
-            : "Este personaje está disponible en planes Premium.",
-      });
+      const characterName = characters.find((ch) => ch.id === id)?.name ?? "Este personaje";
+      if (c.accessType === "VIP") {
+        setUpgradeModal({
+          title: `${characterName} es exclusiva VIP`,
+          message: "Desbloquea el plan VIP para acceder al personaje más difícil e intenso del catálogo.",
+          benefits: [
+            `Chat privado con ${characterName}`,
+            "Generación de imágenes nivel Explícita",
+            "50 créditos de imagen al mes",
+            "Acceso a todos los personajes Premium",
+          ],
+          ctaLabel: "Desbloquear VIP",
+        });
+      } else {
+        setUpgradeModal({
+          title: `${characterName} es Premium`,
+          message: "Desbloquea Premium para chatear con ella y generar imágenes exclusivas.",
+          benefits: [
+            `Chat ilimitado con ${characterName}`,
+            "12 personajes desbloqueados",
+            "20 créditos de imagen al mes",
+            "Imágenes Normal, Sensual y Sin ropa",
+          ],
+          ctaLabel: "Desbloquear Premium",
+        });
+      }
       return;
     }
     setSelectedId(id);
@@ -501,8 +546,15 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           {imageEnabled && (
             <div className="mb-2 flex items-center gap-1.5">
               <span className="text-[10px] text-slate-500">Foto:</span>
-              {(["SAFE", "SENSUAL", "NUDE"] as const).map((lvl) => {
-                const labels: Record<string, string> = { SAFE: "Normal", SENSUAL: "Sensual", NUDE: "Sin ropa" };
+              {(["SAFE", "SENSUAL", "NUDE", "EXPLICIT"] as const).map((lvl) => {
+                const labels: Record<string, string> = {
+                  SAFE: "Normal",
+                  SENSUAL: "Sensual",
+                  NUDE: "Sin ropa",
+                  EXPLICIT: "Explícita",
+                };
+                // EXPLICIT solo visible para VIP
+                if (lvl === "EXPLICIT" && user?.plan !== "VIP") return null;
                 return (
                   <button
                     key={lvl}
@@ -586,6 +638,8 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         <UpgradeModal
           title={upgradeModal.title}
           message={upgradeModal.message}
+          benefits={upgradeModal.benefits}
+          ctaLabel={upgradeModal.ctaLabel}
           onClose={() => setUpgradeModal(null)}
         />
       )}

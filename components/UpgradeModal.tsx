@@ -6,9 +6,19 @@ interface UpgradeModalProps {
   title: string;
   message: string;
   onClose: () => void;
+  benefits?: string[];
+  ctaLabel?: string;
+  ctaHref?: string;
 }
 
-export default function UpgradeModal({ title, message, onClose }: UpgradeModalProps) {
+export default function UpgradeModal({
+  title,
+  message,
+  onClose,
+  benefits,
+  ctaLabel = "Ver planes",
+  ctaHref = "/planes",
+}: UpgradeModalProps) {
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#02030a]/80 p-4 backdrop-blur-md">
       <div className="glass-strong glow-border w-full max-w-sm rounded-2xl p-7 text-center">
@@ -24,6 +34,25 @@ export default function UpgradeModal({ title, message, onClose }: UpgradeModalPr
         <h2 className="text-lg font-bold text-white">{title}</h2>
         <p className="mt-2 text-sm leading-relaxed text-slate-400">{message}</p>
 
+        {benefits && benefits.length > 0 && (
+          <ul className="mt-4 space-y-1.5 text-left">
+            {benefits.map((b) => (
+              <li key={b} className="flex items-start gap-2 text-sm text-slate-300">
+                <svg
+                  className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                </svg>
+                {b}
+              </li>
+            ))}
+          </ul>
+        )}
+
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <button
             onClick={onClose}
@@ -32,10 +61,10 @@ export default function UpgradeModal({ title, message, onClose }: UpgradeModalPr
             Cerrar
           </button>
           <Link
-            href="/planes"
+            href={ctaHref}
             className="glow-button order-1 flex-1 rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-105 sm:order-2"
           >
-            Ver planes
+            {ctaLabel}
           </Link>
         </div>
       </div>
