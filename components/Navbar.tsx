@@ -26,12 +26,12 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/5 bg-[#05070d]/80 backdrop-blur-xl">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2.5 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center" onClick={() => setOpen(false)} aria-label="Ir al inicio — HAREMS">
           {/* Desktop: logo horizontal completo */}
-          <BrandLogo variant="horizontal" size="md" className="hidden sm:block" />
+          <BrandLogo variant="horizontal" size="sm" priority className="hidden sm:block" />
           {/* Mobile: solo emblema */}
-          <BrandLogo variant="emblem" size="md" className="sm:hidden" />
+          <BrandLogo variant="emblem" size="sm" priority className="sm:hidden" />
         </Link>
 
         <div className="hidden items-center gap-8 md:flex">

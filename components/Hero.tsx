@@ -16,7 +16,7 @@ export default function Hero() {
             </span>
 
             <h1 className="mt-6" aria-label="HAREMS">
-              <BrandLogo variant="hero" size="lg" className="mx-auto lg:mx-0" />
+              <BrandLogo variant="horizontal" size="lg" priority className="mx-auto lg:mx-0" />
             </h1>
 
             <p className="mt-4 text-2xl font-semibold text-slate-100 sm:text-3xl">

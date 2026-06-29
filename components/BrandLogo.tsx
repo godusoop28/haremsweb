@@ -1,46 +1,61 @@
-type Variant = "horizontal" | "emblem" | "hero" | "footer";
-type Size = "sm" | "md" | "lg";
+import Image from "next/image";
+
+export type LogoVariant = "horizontal" | "emblem" | "vertical";
+export type LogoSize = "xs" | "sm" | "md" | "lg" | "xl";
 
 interface BrandLogoProps {
-  variant?: Variant;
-  size?: Size;
+  variant?: LogoVariant;
+  size?: LogoSize;
   className?: string;
+  priority?: boolean;
 }
 
-const srcs: Record<Variant, string> = {
-  horizontal: "/brand/harems/sistema/nav-logo-horizontal-dark-320x80.png",
-  emblem:     "/brand/harems/sistema/nav-emblema-64x64.png",
-  hero:       "/brand/harems/web/hero-logo-horizontal-1200x300.png",
-  footer:     "/brand/harems/web/footer-logo-horizontal-640x160.png",
+const srcs: Record<LogoVariant, string> = {
+  horizontal: "/1-removebg-preview.png",
+  emblem:     "/2-removebg-preview.png",
+  vertical:   "/3-removebg-preview.png",
 };
 
-const dims: Record<Variant, { w: number; h: number }> = {
-  horizontal: { w: 320, h: 80 },
-  emblem:     { w: 64,  h: 64 },
-  hero:       { w: 1200, h: 300 },
-  footer:     { w: 640, h: 160 },
-};
-
-const sizeClass: Record<Variant, Record<Size, string>> = {
-  horizontal: { sm: "h-7 w-auto", md: "h-9 w-auto",  lg: "h-12 w-auto" },
-  emblem:     { sm: "h-7 w-7",    md: "h-9 w-9",     lg: "h-12 w-12"   },
-  hero:       { sm: "h-16 w-auto", md: "h-24 w-auto", lg: "h-32 w-auto" },
-  footer:     { sm: "h-8 w-auto", md: "h-12 w-auto", lg: "h-16 w-auto" },
+// [width, height] en px para cada variante × tamaño
+const dims: Record<LogoVariant, Record<LogoSize, [number, number]>> = {
+  horizontal: {
+    xs: [120, 40],
+    sm: [160, 52],
+    md: [220, 72],
+    lg: [320, 104],
+    xl: [520, 170],
+  },
+  emblem: {
+    xs: [32,  32],
+    sm: [44,  44],
+    md: [64,  64],
+    lg: [96,  96],
+    xl: [140, 140],
+  },
+  vertical: {
+    xs: [90,  120],
+    sm: [130, 170],
+    md: [190, 250],
+    lg: [280, 360],
+    xl: [420, 540],
+  },
 };
 
 export default function BrandLogo({
   variant = "horizontal",
   size = "md",
   className = "",
+  priority = false,
 }: BrandLogoProps) {
-  const { w, h } = dims[variant];
+  const [w, h] = dims[variant][size];
   return (
-    <img
+    <Image
       src={srcs[variant]}
       alt="HAREMS"
       width={w}
       height={h}
-      className={`object-contain select-none ${sizeClass[variant][size]} ${className}`}
+      className={`flex-shrink-0 object-contain select-none ${className}`}
+      priority={priority}
       draggable={false}
     />
   );

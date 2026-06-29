@@ -82,7 +82,7 @@ function AuthCardInner({
       <div className="glass-strong glow-border w-full max-w-md rounded-2xl p-8">
         <div className="text-center">
           <Link href="/" aria-label="HAREMS — inicio" className="inline-block">
-            <BrandLogo variant="horizontal" size="md" />
+            <BrandLogo variant="vertical" size="md" priority />
           </Link>
           <h1 className="mt-4 text-2xl font-bold text-white">{title}</h1>
           <p className="mt-2 text-sm text-slate-400">{subtitle}</p>

@@ -18,7 +18,7 @@ export default function Footer() {
         <div className="grid gap-10 md:grid-cols-4">
           <div>
             <Link href="/" aria-label="HAREMS — inicio">
-              <BrandLogo variant="footer" size="sm" />
+              <BrandLogo variant="horizontal" size="sm" />
             </Link>
             <p className="mt-3 max-w-xs text-sm text-slate-400">
               Una plataforma privada de chat con personajes de inteligencia artificial,

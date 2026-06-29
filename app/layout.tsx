@@ -22,12 +22,14 @@ export const metadata: Metadata = {
     "Plataforma de chat con personajes de inteligencia artificial. Doce personalidades únicas, conversaciones privadas y planes premium.",
   icons: {
     icon: [
+      { url: "/2-removebg-preview.png", type: "image/png" },
       { url: "/brand/harems/favicon/favicon-32x32.png", sizes: "32x32", type: "image/png" },
       { url: "/brand/harems/favicon/favicon-48x48.png", sizes: "48x48", type: "image/png" },
       { url: "/brand/harems/favicon/favicon-64x64.png", sizes: "64x64", type: "image/png" },
       { url: "/brand/harems/favicon/favicon-96x96.png", sizes: "96x96", type: "image/png" },
     ],
     apple: [
+      { url: "/2-removebg-preview.png", type: "image/png" },
       { url: "/brand/harems/favicon/favicon-180x180.png", sizes: "180x180", type: "image/png" },
     ],
     other: [
