@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import BrandLogo from "@/components/BrandLogo";
 
 interface AuthCardProps {
   mode: "login" | "register";
@@ -80,9 +81,9 @@ function AuthCardInner({
 
       <div className="glass-strong glow-border w-full max-w-md rounded-2xl p-8">
         <div className="text-center">
-          <span className="text-2xl font-bold tracking-tight text-white">
-            HARE<span className="text-gradient">MS</span>
-          </span>
+          <Link href="/" aria-label="HAREMS — inicio" className="inline-block">
+            <BrandLogo variant="horizontal" size="md" />
+          </Link>
           <h1 className="mt-4 text-2xl font-bold text-white">{title}</h1>
           <p className="mt-2 text-sm text-slate-400">{subtitle}</p>
         </div>

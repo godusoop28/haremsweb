@@ -130,6 +130,15 @@ export interface SubscriptionResponse {
   messagesUsed: number;
 }
 
+export interface PayPalSubscriptionResponse {
+  provider: string;
+  plan: PlanType;
+  paypalPlanId: string;
+  paypalSubscriptionId: string;
+  approvalUrl: string;
+  status: string;
+}
+
 export interface ImageGenerationResponse {
   id: number;
   imageUrl: string;
@@ -193,6 +202,29 @@ export const api = {
       method: "POST",
       token,
       body: JSON.stringify({ plan }),
+    });
+  },
+
+  createPayPalSubscription(token: string, plan: PlanType) {
+    return request<PayPalSubscriptionResponse>("/payments/paypal/create-subscription", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ plan }),
+    });
+  },
+
+  confirmPayPalSubscription(token: string, subscriptionId: string) {
+    return request<SubscriptionResponse>("/payments/paypal/confirm-subscription", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ subscriptionId }),
+    });
+  },
+
+  cancelPayPalSubscription(token: string) {
+    return request<void>("/payments/paypal/cancel-subscription", {
+      method: "POST",
+      token,
     });
   },
 

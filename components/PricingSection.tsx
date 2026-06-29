@@ -1,43 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { plans } from "@/lib/data";
-import { api, ApiError, type PlanType } from "@/lib/api";
+import { plans, TRIAL_PLAN_ENABLED } from "@/lib/data";
 import { useAuth } from "@/lib/auth-context";
 
-const planTypeMap: Record<string, PlanType> = {
-  free: "FREE",
+const planCheckoutId: Record<string, string> = {
   trial: "TRIAL_3_DAYS",
   premium: "PREMIUM",
   vip: "VIP",
 };
 
 export default function PricingSection() {
-  const { user, token, refresh } = useAuth();
-  const [pendingId, setPendingId] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{ id: string; message: string; ok: boolean } | null>(
-    null
-  );
-
-  async function handleChoose(planId: string) {
-    if (!token) return;
-    setPendingId(planId);
-    setFeedback(null);
-    try {
-      await api.simulateSubscription(token, planTypeMap[planId]);
-      await refresh();
-      setFeedback({ id: planId, message: "¡Plan actualizado!", ok: true });
-    } catch (err) {
-      setFeedback({
-        id: planId,
-        message: err instanceof ApiError ? err.message : "No se pudo actualizar el plan.",
-        ok: false,
-      });
-    } finally {
-      setPendingId(null);
-    }
-  }
+  const { user } = useAuth();
 
   return (
     <section className="px-4 py-20 sm:px-6 lg:px-8">
@@ -53,82 +27,94 @@ export default function PricingSection() {
         </div>
 
         <div className="mx-auto mt-12 grid max-w-6xl gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {plans.map((plan) => (
-            <div
-              key={plan.id}
-              className={`relative flex flex-col rounded-2xl p-8 ${
-                plan.highlighted
-                  ? "glass-strong glow-border scale-100 lg:scale-105"
-                  : "glass"
-              }`}
-            >
-              {plan.highlighted && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-4 py-1 text-xs font-semibold text-white">
-                  Más popular
-                </span>
-              )}
+          {plans.map((plan) => {
+            const checkoutPlan = planCheckoutId[plan.id];
+            const isFreePlan = plan.id === "free";
+            const isTrialPlan = plan.id === "trial";
+            const isTrialDisabled = isTrialPlan && !TRIAL_PLAN_ENABLED;
+            const userPlanKey = isTrialPlan ? "TRIAL_3_DAYS" : plan.id.toUpperCase();
+            const currentPlanActive = user?.plan === userPlanKey;
 
-              <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
-              <div className="mt-3 flex items-baseline gap-1">
-                <span className="text-4xl font-extrabold text-white">{plan.price}</span>
-                <span className="text-sm text-slate-400">{plan.period}</span>
-              </div>
-              <p className="mt-3 text-sm text-slate-400">{plan.description}</p>
+            return (
+              <div
+                key={plan.id}
+                className={`relative flex flex-col rounded-2xl p-8 ${
+                  plan.highlighted
+                    ? "glass-strong glow-border scale-100 lg:scale-105"
+                    : "glass"
+                }`}
+              >
+                {plan.highlighted && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-4 py-1 text-xs font-semibold text-white">
+                    Más popular
+                  </span>
+                )}
 
-              <ul className="mt-6 flex-1 space-y-3">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2 text-sm text-slate-300">
-                    <svg
-                      className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                    </svg>
-                    {feature}
-                  </li>
-                ))}
-              </ul>
+                <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
+                <div className="mt-3 flex items-baseline gap-1">
+                  <span className="text-4xl font-extrabold text-white">{plan.price}</span>
+                  <span className="text-sm text-slate-400">{plan.period}</span>
+                </div>
+                <p className="mt-3 text-sm text-slate-400">{plan.description}</p>
 
-              {user ? (
-                <>
-                  <button
-                    onClick={() => handleChoose(plan.id)}
-                    disabled={pendingId !== null}
-                    className={`mt-8 w-full rounded-full px-5 py-3 text-center text-sm font-semibold transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 ${
+                <ul className="mt-6 flex-1 space-y-3">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2 text-sm text-slate-300">
+                      <svg
+                        className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                {isFreePlan ? (
+                  <Link
+                    href={user ? "/chat" : "/registro"}
+                    className="mt-8 w-full rounded-full border border-white/10 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-slate-200 transition-colors hover:bg-white/10"
+                  >
+                    {user ? "Ir al chat" : "Registrarse gratis"}
+                  </Link>
+                ) : isTrialDisabled ? (
+                  <div className="mt-8 w-full rounded-full border border-white/10 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-slate-500 cursor-not-allowed">
+                    Próximamente
+                  </div>
+                ) : currentPlanActive ? (
+                  <div className="mt-8 w-full rounded-full border border-emerald-400/30 bg-emerald-400/10 px-5 py-3 text-center text-sm font-semibold text-emerald-300">
+                    Plan actual
+                  </div>
+                ) : user ? (
+                  <Link
+                    href={`/checkout?plan=${checkoutPlan}`}
+                    className={`mt-8 w-full rounded-full px-5 py-3 text-center text-sm font-semibold transition-transform hover:scale-105 ${
                       plan.highlighted
                         ? "glow-button bg-gradient-to-r from-cyan-400 to-blue-600 text-white"
                         : "border border-white/10 bg-white/5 text-slate-200"
                     }`}
                   >
-                    {pendingId === plan.id ? "Procesando..." : "Elegir plan"}
-                  </button>
-                  {feedback?.id === plan.id && (
-                    <p
-                      className={`mt-2 text-center text-xs ${
-                        feedback.ok ? "text-emerald-300" : "text-red-300"
-                      }`}
-                    >
-                      {feedback.message}
-                    </p>
-                  )}
-                </>
-              ) : (
-                <Link
-                  href="/registro"
-                  className={`mt-8 w-full rounded-full px-5 py-3 text-center text-sm font-semibold transition-transform hover:scale-105 ${
-                    plan.highlighted
-                      ? "glow-button bg-gradient-to-r from-cyan-400 to-blue-600 text-white"
-                      : "border border-white/10 bg-white/5 text-slate-200"
-                  }`}
-                >
-                  Elegir plan
-                </Link>
-              )}
-            </div>
-          ))}
+                    Pagar con PayPal
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/registro`}
+                    className={`mt-8 w-full rounded-full px-5 py-3 text-center text-sm font-semibold transition-transform hover:scale-105 ${
+                      plan.highlighted
+                        ? "glow-button bg-gradient-to-r from-cyan-400 to-blue-600 text-white"
+                        : "border border-white/10 bg-white/5 text-slate-200"
+                    }`}
+                  >
+                    Elegir plan
+                  </Link>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import BrandLogo from "@/components/BrandLogo";
 
 const links = [
   { href: "/", label: "Inicio" },
@@ -26,10 +27,11 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/5 bg-[#05070d]/80 backdrop-blur-xl">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2" onClick={() => setOpen(false)}>
-          <span className="text-xl font-bold tracking-tight text-white">
-            HARE<span className="text-gradient">MS</span>
-          </span>
+        <Link href="/" className="flex items-center" onClick={() => setOpen(false)} aria-label="Ir al inicio — HAREMS">
+          {/* Desktop: logo horizontal completo */}
+          <BrandLogo variant="horizontal" size="md" className="hidden sm:block" />
+          {/* Mobile: solo emblema */}
+          <BrandLogo variant="emblem" size="md" className="sm:hidden" />
         </Link>
 
         <div className="hidden items-center gap-8 md:flex">

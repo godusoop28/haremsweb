@@ -499,6 +499,12 @@ export interface Plan {
   highlighted: boolean;
 }
 
+/**
+ * Cambia a true cuando el cliente cree el plan TRIAL_3_DAYS en PayPal Developer
+ * y configure PAYPAL_TRIAL_PLAN_ID en Render.
+ */
+export const TRIAL_PLAN_ENABLED = false;
+
 export const plans: Plan[] = [
   {
     id: "free",
@@ -523,7 +529,7 @@ export const plans: Plan[] = [
     features: [
       "12 personajes desbloqueados por 3 días",
       "Chat sin límite durante el acceso",
-      "5 créditos de imagen incluidos",
+      "10 créditos de imagen incluidos",
       "Imágenes Normal, Sensual y Sin ropa",
       "Sin renovación automática",
     ],
@@ -538,7 +544,7 @@ export const plans: Plan[] = [
     features: [
       "12 personajes desbloqueados",
       "Chat ilimitado sin restricciones",
-      "20 créditos de imagen al mes",
+      "30 créditos de imagen al mes",
       "Imágenes Normal, Sensual y Sin ropa",
       "Generación de imágenes activada",
     ],
@@ -553,7 +559,7 @@ export const plans: Plan[] = [
     features: [
       "Todo lo de Premium incluido",
       "Victoria Hale desbloqueada (dificultad extrema)",
-      "50 créditos de imagen al mes",
+      "100 créditos de imagen al mes",
       "Nivel Explícita desbloqueado",
       "Prioridad de respuesta",
       "Acceso anticipado a nuevos personajes",

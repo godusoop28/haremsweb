@@ -1,5 +1,6 @@
 import Link from "next/link";
 import HeroBackground from "./HeroBackground";
+import BrandLogo from "./BrandLogo";
 
 export default function Hero() {
   return (
@@ -14,8 +15,8 @@ export default function Hero() {
               12 personalidades IA disponibles
             </span>
 
-            <h1 className="mt-6 text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-6xl lg:text-7xl">
-              HARE<span className="text-gradient">MS</span>
+            <h1 className="mt-6" aria-label="HAREMS">
+              <BrandLogo variant="hero" size="lg" className="mx-auto lg:mx-0" />
             </h1>
 
             <p className="mt-4 text-2xl font-semibold text-slate-100 sm:text-3xl">

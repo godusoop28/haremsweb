@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import BrandLogo from "@/components/BrandLogo";
 
 export default function Footer() {
   const pathname = usePathname();
@@ -16,9 +17,9 @@ export default function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid gap-10 md:grid-cols-4">
           <div>
-            <span className="text-xl font-bold tracking-tight text-white">
-              HARE<span className="text-gradient">MS</span>
-            </span>
+            <Link href="/" aria-label="HAREMS — inicio">
+              <BrandLogo variant="footer" size="sm" />
+            </Link>
             <p className="mt-3 max-w-xs text-sm text-slate-400">
               Una plataforma privada de chat con personajes de inteligencia artificial,
               diseñada para conversaciones personalizadas y seguras.

@@ -20,6 +20,21 @@ export const metadata: Metadata = {
   title: "HAREMS — Chat con chicas IA personalizadas",
   description:
     "Plataforma de chat con personajes de inteligencia artificial. Doce personalidades únicas, conversaciones privadas y planes premium.",
+  icons: {
+    icon: [
+      { url: "/brand/harems/favicon/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/brand/harems/favicon/favicon-48x48.png", sizes: "48x48", type: "image/png" },
+      { url: "/brand/harems/favicon/favicon-64x64.png", sizes: "64x64", type: "image/png" },
+      { url: "/brand/harems/favicon/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+    ],
+    apple: [
+      { url: "/brand/harems/favicon/favicon-180x180.png", sizes: "180x180", type: "image/png" },
+    ],
+    other: [
+      { rel: "icon", url: "/brand/harems/favicon/favicon-192x192.png", sizes: "192x192" },
+      { rel: "icon", url: "/brand/harems/favicon/favicon-512x512.png", sizes: "512x512" },
+    ],
+  },
 };
 
 export const viewport: Viewport = {
