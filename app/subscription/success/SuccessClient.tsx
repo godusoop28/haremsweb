@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError, type PlanType } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -14,8 +14,16 @@ const POLL_INTERVAL_MS = 3000;
 
 export default function SuccessClient() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { token } = useAuth();
-  const subscriptionId = searchParams.get("subscription_id");
+
+  // PayPal puede devolver el ID de suscripción con distintos nombres según el flujo
+  const subscriptionId =
+    searchParams.get("subscription_id") ||
+    searchParams.get("subscriptionId") ||
+    searchParams.get("ba_token") ||
+    searchParams.get("token") ||
+    null;
 
   const [state, setState] = useState<State>("confirming");
   const [activePlan, setActivePlan] = useState<PlanType | null>(null);
@@ -34,10 +42,16 @@ export default function SuccessClient() {
         try {
           await api.confirmPayPalSubscription(token!, subscriptionId);
         } catch (err) {
-          if (err instanceof ApiError && err.status !== 404) {
-            setErrorMsg(err.message);
-            setState("error");
-            return;
+          if (err instanceof ApiError) {
+            if (err.status === 401 || err.status === 403) {
+              router.replace("/login?next=/subscription/success");
+              return;
+            }
+            if (err.status !== 404) {
+              setErrorMsg(err.message || "No se pudo confirmar el pago. Tu plan se activará automáticamente si el pago fue exitoso.");
+              setState("error");
+              return;
+            }
           }
           // 404 = payment not found yet, still poll
         }
@@ -68,7 +82,7 @@ export default function SuccessClient() {
 
     confirmAndPoll();
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [token, subscriptionId]);
+  }, [token, subscriptionId, router]);
 
   if (state === "error") {
     return (

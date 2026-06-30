@@ -499,11 +499,7 @@ export interface Plan {
   highlighted: boolean;
 }
 
-/**
- * Cambia a true cuando el cliente cree el plan TRIAL_3_DAYS en PayPal Developer
- * y configure PAYPAL_TRIAL_PLAN_ID en Render.
- */
-export const TRIAL_PLAN_ENABLED = false;
+export const TRIAL_PLAN_ENABLED = true;
 
 export const plans: Plan[] = [
   {

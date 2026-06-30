@@ -58,6 +58,8 @@ export default function DashboardClient() {
   const [remoteCharacters, setRemoteCharacters] = useState<CharacterResponse[]>([]);
   const [pendingPlan, setPendingPlan] = useState<PlanType | null>(null);
   const [planFeedback, setPlanFeedback] = useState<string | null>(null);
+  const [cancelPending, setCancelPending] = useState(false);
+  const [cancelFeedback, setCancelFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !token) {
@@ -76,6 +78,23 @@ export default function DashboardClient() {
     api.getConversations(token).then(setConversations).catch(() => {});
     api.getCharacters().then(setRemoteCharacters).catch(() => {});
   }, [token, loadSubscription]);
+
+  async function handleCancelSubscription() {
+    if (!token || cancelPending) return;
+    setCancelPending(true);
+    setCancelFeedback(null);
+    try {
+      await api.cancelPayPalSubscription(token);
+      await refresh();
+      loadSubscription();
+      setCancelFeedback("Suscripción cancelada. Tu acceso estará activo hasta la fecha de vencimiento.");
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "No se pudo cancelar la suscripción.";
+      setCancelFeedback(msg);
+    } finally {
+      setCancelPending(false);
+    }
+  }
 
   async function handleSimulatePlan(plan: PlanType) {
     if (!token || pendingPlan) return;
@@ -143,6 +162,20 @@ export default function DashboardClient() {
                     year: "numeric",
                   })}`}
               </p>
+            )}
+            {subscription?.status === "ACTIVE" && user.plan !== "FREE" && (
+              <div className="mt-3">
+                <button
+                  onClick={handleCancelSubscription}
+                  disabled={cancelPending}
+                  className="text-xs text-rose-400 underline underline-offset-2 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {cancelPending ? "Cancelando…" : "Cancelar suscripción"}
+                </button>
+                {cancelFeedback && (
+                  <p className="mt-1 text-xs text-slate-400">{cancelFeedback}</p>
+                )}
+              </div>
             )}
           </div>
           <div className="glass rounded-2xl p-6">
@@ -234,31 +267,31 @@ export default function DashboardClient() {
           </div>
         </div>
 
-        {/* Panel temporal de pruebas: simula cambios de plan sin pagos reales. Eliminar al integrar pagos. */}
-        <div className="mt-10 glass rounded-2xl p-6">
-          <h2 className="text-lg font-semibold text-white">Plan de pruebas (desarrollo)</h2>
-          <p className="mt-1 text-xs text-slate-400">
-            Botones temporales para simular cambios de plan. Se eliminarán cuando se integren
-            pagos reales.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {devPlans.map(({ plan, label }) => (
-              <button
-                key={plan}
-                onClick={() => handleSimulatePlan(plan)}
-                disabled={pendingPlan !== null}
-                className={`rounded-full border px-4 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-                  user.plan === plan
-                    ? "border-cyan-400/40 bg-cyan-400/10 text-cyan-300"
-                    : "border-white/10 bg-white/5 text-slate-200 hover:border-cyan-400/30"
-                }`}
-              >
-                {pendingPlan === plan ? "Procesando..." : label}
-              </button>
-            ))}
+        {user.role === "ADMIN" && (
+          <div className="mt-10 glass rounded-2xl p-6 border border-amber-400/20">
+            <h2 className="text-lg font-semibold text-amber-300">Herramientas admin</h2>
+            <p className="mt-1 text-xs text-slate-400">
+              Simula cambios de plan. Solo visible para administradores.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {devPlans.map(({ plan, label }) => (
+                <button
+                  key={plan}
+                  onClick={() => handleSimulatePlan(plan)}
+                  disabled={pendingPlan !== null}
+                  className={`rounded-full border px-4 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                    user.plan === plan
+                      ? "border-cyan-400/40 bg-cyan-400/10 text-cyan-300"
+                      : "border-white/10 bg-white/5 text-slate-200 hover:border-cyan-400/30"
+                  }`}
+                >
+                  {pendingPlan === plan ? "Procesando..." : label}
+                </button>
+              ))}
+            </div>
+            {planFeedback && <p className="mt-3 text-xs text-slate-400">{planFeedback}</p>}
           </div>
-          {planFeedback && <p className="mt-3 text-xs text-slate-400">{planFeedback}</p>}
-        </div>
+        )}
       </div>
     </section>
   );
