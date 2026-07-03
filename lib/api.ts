@@ -62,7 +62,15 @@ async function request<T>(
 
 export type Role = "USER" | "ADMIN";
 export type PlanType = "FREE" | "TRIAL_3_DAYS" | "PREMIUM" | "VIP";
-export type SubscriptionStatus = "ACTIVE" | "EXPIRED" | "CANCELLED";
+export type SubscriptionStatus =
+  | "FREE"
+  | "PENDING"
+  | "ACTIVE"
+  | "CANCEL_PENDING"
+  | "CANCELLED"
+  | "SUSPENDED"
+  | "EXPIRED"
+  | "PAST_DUE";
 export type AccessType = "FREE" | "PREMIUM" | "VIP";
 export type SenderType = "USER" | "AI";
 
@@ -128,6 +136,11 @@ export interface SubscriptionResponse {
   expiresAt: string | null;
   imageCredits: number;
   messagesUsed: number;
+  billingProvider: string | null;
+  subscriptionId: number | null;
+  paypalSubscriptionId: string | null;
+  cancelAtPeriodEnd: boolean;
+  canCancel: boolean;
 }
 
 export interface PayPalSubscriptionResponse {

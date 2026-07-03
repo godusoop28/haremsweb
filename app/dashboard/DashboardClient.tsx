@@ -25,9 +25,14 @@ const planLabels: Record<PlanType, string> = {
 };
 
 const statusLabels: Record<SubscriptionResponse["status"], string> = {
+  FREE: "Gratis",
+  PENDING: "Pendiente de confirmación",
   ACTIVE: "Activa",
-  EXPIRED: "Expirada",
+  CANCEL_PENDING: "Cancelada",
   CANCELLED: "Cancelada",
+  SUSPENDED: "Suspendida",
+  EXPIRED: "Expirada",
+  PAST_DUE: "Pago pendiente",
 };
 
 // Botones temporales para pruebas de planes. Eliminar cuando se integren pagos reales.
@@ -132,7 +137,7 @@ export default function DashboardClient() {
       await api.cancelPayPalSubscription(token);
       await refresh();
       loadSubscription();
-      setCancelFeedback("Suscripción cancelada. Tu acceso estará activo hasta la fecha de vencimiento.");
+      setCancelFeedback("Tu suscripción fue cancelada. Mantendrás beneficios hasta el final del periodo pagado.");
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : "No se pudo cancelar la suscripción.";
       setCancelFeedback(msg);
@@ -199,8 +204,19 @@ export default function DashboardClient() {
             <p className="mt-2 text-2xl font-bold text-white">{planLabels[user.plan]}</p>
             {subscription && (
               <p className="mt-1 text-xs text-slate-400">
-                {statusLabels[subscription.status]}
-                {subscription.expiresAt &&
+                {subscription.cancelAtPeriodEnd
+                  ? `Cancelada, activa hasta ${
+                      subscription.expiresAt
+                        ? new Date(subscription.expiresAt).toLocaleDateString("es-MX", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })
+                        : "fin de periodo"
+                    }`
+                  : statusLabels[subscription.status]}
+                {!subscription.cancelAtPeriodEnd &&
+                  subscription.expiresAt &&
                   ` · vence ${new Date(subscription.expiresAt).toLocaleDateString("es-MX", {
                     day: "2-digit",
                     month: "2-digit",
@@ -208,7 +224,7 @@ export default function DashboardClient() {
                   })}`}
               </p>
             )}
-            {subscription?.status === "ACTIVE" && user.plan !== "FREE" && (
+            {subscription?.canCancel && (
               <div className="mt-3">
                 <button
                   onClick={handleCancelSubscription}
