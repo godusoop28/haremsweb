@@ -150,6 +150,43 @@ export interface ImageGenerationResponse {
   messageCount: number;
 }
 
+export type CreditTransactionType =
+  | "GRANT"
+  | "SPEND"
+  | "REFUND"
+  | "ADJUSTMENT"
+  | "EXPIRE"
+  | "REVERSAL";
+
+export type CreditProvider =
+  | "INTERNAL"
+  | "PAYPAL"
+  | "FAL"
+  | "OPENROUTER"
+  | "SYSTEM";
+
+export interface CreditTransactionResponse {
+  id: number;
+  type: CreditTransactionType;
+  amount: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  reason: string;
+  provider: CreditProvider;
+  providerJobId: string | null;
+  relatedPaymentId: number | null;
+  relatedImageGenerationId: number | null;
+  createdAt: string;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
 export const api = {
   register(data: { name: string; email: string; password: string; ageVerified: boolean }) {
     return request<AuthResponse>("/auth/register", {
@@ -226,6 +263,13 @@ export const api = {
       method: "POST",
       token,
     });
+  },
+
+  getCreditTransactions(token: string, page = 0, size = 10) {
+    return request<PageResponse<CreditTransactionResponse>>(
+      `/credits/transactions/me?page=${page}&size=${size}`,
+      { token }
+    );
   },
 
   generateImage(

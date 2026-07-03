@@ -12,6 +12,8 @@ import {
   type SubscriptionResponse,
   type CharacterResponse,
   type PlanType,
+  type CreditTransactionResponse,
+  type CreditTransactionType,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
@@ -35,6 +37,45 @@ const devPlans: { plan: PlanType; label: string }[] = [
   { plan: "PREMIUM", label: "Activar PREMIUM" },
   { plan: "VIP", label: "Activar VIP" },
 ];
+
+function CreditTypeBadge({ type }: { type: CreditTransactionType }) {
+  const styles: Record<CreditTransactionType, string> = {
+    GRANT: "bg-emerald-400/15 text-emerald-300",
+    SPEND: "bg-rose-400/15 text-rose-300",
+    REFUND: "bg-cyan-400/15 text-cyan-300",
+    ADJUSTMENT: "bg-amber-400/15 text-amber-300",
+    EXPIRE: "bg-slate-400/15 text-slate-400",
+    REVERSAL: "bg-purple-400/15 text-purple-300",
+  };
+  const labels: Record<CreditTransactionType, string> = {
+    GRANT: "Otorgado",
+    SPEND: "Gastado",
+    REFUND: "Reembolso",
+    ADJUSTMENT: "Ajuste",
+    EXPIRE: "Expirado",
+    REVERSAL: "Reversión",
+  };
+  return (
+    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${styles[type]}`}>
+      {labels[type]}
+    </span>
+  );
+}
+
+function friendlyReason(reason: string): string {
+  const map: Record<string, string> = {
+    SUBSCRIPTION_ACTIVATED_PREMIUM: "Suscripción Premium",
+    SUBSCRIPTION_ACTIVATED_VIP: "Suscripción VIP",
+    SUBSCRIPTION_ACTIVATED_TRIAL_3_DAYS: "Pase 3 días",
+    PLAN_DOWNGRADE_TO_FREE: "Downgrade a Free",
+  };
+  if (map[reason]) return map[reason];
+  if (reason.startsWith("IMAGE_GENERATION:")) return "Imagen generada";
+  if (reason.startsWith("IMAGE_BLOCKED_BY_PROVIDER:")) return "Imagen bloqueada (reembolso)";
+  if (reason.startsWith("IMAGE_GENERATION_FAILED:")) return "Error de imagen (reembolso)";
+  if (reason.startsWith("ADMIN_ADJUST:")) return "Ajuste admin";
+  return reason;
+}
 
 const planRank: Record<PlanType, number> = {
   FREE: 0,
@@ -60,6 +101,7 @@ export default function DashboardClient() {
   const [planFeedback, setPlanFeedback] = useState<string | null>(null);
   const [cancelPending, setCancelPending] = useState(false);
   const [cancelFeedback, setCancelFeedback] = useState<string | null>(null);
+  const [creditHistory, setCreditHistory] = useState<CreditTransactionResponse[]>([]);
 
   useEffect(() => {
     if (!authLoading && !token) {
@@ -77,6 +119,9 @@ export default function DashboardClient() {
     if (!token) return;
     api.getConversations(token).then(setConversations).catch(() => {});
     api.getCharacters().then(setRemoteCharacters).catch(() => {});
+    api.getCreditTransactions(token, 0, 10)
+      .then((page) => setCreditHistory(page.content))
+      .catch(() => {});
   }, [token, loadSubscription]);
 
   async function handleCancelSubscription() {
@@ -266,6 +311,55 @@ export default function DashboardClient() {
             </div>
           </div>
         </div>
+
+        {creditHistory.length > 0 && (
+          <div className="mt-10 glass rounded-2xl p-6">
+            <h2 className="text-lg font-semibold text-white">Historial de créditos</h2>
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-xs text-slate-300">
+                <thead>
+                  <tr className="border-b border-white/10 text-left text-slate-400">
+                    <th className="pb-2 pr-4">Fecha</th>
+                    <th className="pb-2 pr-4">Tipo</th>
+                    <th className="pb-2 pr-4 text-right">Cantidad</th>
+                    <th className="pb-2 pr-4 text-right">Saldo</th>
+                    <th className="pb-2">Motivo</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {creditHistory.map((tx) => (
+                    <tr key={tx.id}>
+                      <td className="py-2 pr-4 text-slate-400">
+                        {new Date(tx.createdAt).toLocaleString("es-MX", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </td>
+                      <td className="py-2 pr-4">
+                        <CreditTypeBadge type={tx.type} />
+                      </td>
+                      <td className={`py-2 pr-4 text-right font-mono font-semibold ${
+                        tx.type === "SPEND" || tx.type === "EXPIRE"
+                          ? "text-rose-400"
+                          : "text-emerald-400"
+                      }`}>
+                        {tx.type === "SPEND" || tx.type === "EXPIRE" ? "-" : "+"}{tx.amount}
+                      </td>
+                      <td className="py-2 pr-4 text-right font-mono text-slate-300">
+                        {tx.balanceAfter}
+                      </td>
+                      <td className="py-2 text-slate-400 max-w-[160px] truncate" title={tx.reason}>
+                        {friendlyReason(tx.reason)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {user.role === "ADMIN" && (
           <div className="mt-10 glass rounded-2xl p-6 border border-amber-400/20">
