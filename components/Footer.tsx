@@ -55,8 +55,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-10 border-t border-white/5 pt-6 text-center text-xs text-slate-500">
-          © {new Date().getFullYear()} HAREMS. Todos los derechos reservados. Maqueta visual
-          sin conexión a servicios reales.
+          © {new Date().getFullYear()} HAREMS. Todos los derechos reservados.
         </div>
       </div>
     </footer>

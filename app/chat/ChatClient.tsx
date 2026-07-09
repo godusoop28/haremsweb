@@ -220,7 +220,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         title: "Imágenes disponibles en Premium",
         message: "Genera fotos de tus personajes favoritas con créditos mensuales.",
         benefits: [
-          "20 créditos de imagen al mes",
+          "30 créditos de imagen al mes",
           "Niveles Normal, Sensual y Sin ropa",
           "Historial de imágenes guardado",
           "Nivel Explícita disponible en VIP",
@@ -243,7 +243,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         title: "Sin créditos de imagen",
         message: "Agotaste tus créditos del mes. Mejora a VIP para obtener más o espera la renovación.",
         benefits: [
-          "VIP incluye 50 créditos al mes",
+          "VIP incluye 100 créditos al mes",
           "Nivel Explícita desbloqueado en VIP",
           "Los créditos se renuevan cada mes",
         ],
@@ -325,7 +325,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           benefits: [
             `Chat privado con ${characterName}`,
             "Generación de imágenes nivel Explícita",
-            "50 créditos de imagen al mes",
+            "100 créditos de imagen al mes",
             "Acceso a todos los personajes Premium",
           ],
           ctaLabel: "Desbloquear VIP",
@@ -337,7 +337,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           benefits: [
             `Chat ilimitado con ${characterName}`,
             "12 personajes desbloqueados",
-            "20 créditos de imagen al mes",
+            "30 créditos de imagen al mes",
             "Imágenes Normal, Sensual y Sin ropa",
           ],
           ctaLabel: "Desbloquear Premium",

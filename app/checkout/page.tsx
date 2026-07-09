@@ -7,26 +7,19 @@ import { api, ApiError, type PlanType } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { plans, TRIAL_PLAN_ENABLED } from "@/lib/data";
 
-const planMeta: Record<string, { name: string; price: string; period: string; features: string[] }> = {
-  PREMIUM: {
-    name: "Premium",
-    price: "$199 MXN",
-    period: "/ mes",
-    features: ["12 personajes desbloqueados", "Chat ilimitado", "30 créditos de imagen/mes", "Normal, Sensual y Sin ropa"],
-  },
-  VIP: {
-    name: "VIP",
-    price: "$399 MXN",
-    period: "/ mes",
-    features: ["Todo Premium incluido", "Victoria Hale desbloqueada", "100 créditos de imagen/mes", "Nivel Explícita desbloqueado"],
-  },
-  TRIAL_3_DAYS: {
-    name: "Pase 3 días",
-    price: "$49 MXN",
-    period: "/ 3 días",
-    features: ["12 personajes por 3 días", "Chat sin límite", "10 créditos de imagen", "Sin renovación automática"],
-  },
+const planIdByType: Record<string, string> = {
+  PREMIUM: "premium",
+  VIP: "vip",
+  TRIAL_3_DAYS: "trial",
 };
+
+const planMeta: Record<string, { name: string; price: string; period: string; features: string[] }> =
+  Object.fromEntries(
+    Object.entries(planIdByType).map(([planType, planId]) => {
+      const plan = plans.find((p) => p.id === planId)!;
+      return [planType, { name: plan.name, price: plan.price, period: plan.period, features: plan.features }];
+    })
+  );
 
 function CheckoutContent() {
   const searchParams = useSearchParams();
@@ -150,7 +143,7 @@ function CheckoutContent() {
         </button>
 
         <p className="mt-4 text-center text-xs text-slate-500">
-          Serás redirigido a PayPal para completar el pago de forma segura.
+          El cargo será procesado de forma segura por PayPal.
         </p>
 
         <div className="mt-6 text-center">

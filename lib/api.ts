@@ -1,6 +1,6 @@
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === "development" ? "https://haremapi-ki80.onrender.com/api" : "");
+  (process.env.NODE_ENV === "development" ? "https://haremapi-k180.onrender.com/api" : "");
 
 if (!API_URL) {
   throw new Error("NEXT_PUBLIC_API_URL no está configurada");
