@@ -200,6 +200,75 @@ export interface PageResponse<T> {
   size: number;
 }
 
+// ── Admin ─────────────────────────────────────────────────────────────────
+
+export type PaymentStatus =
+  | "CREATED"
+  | "PENDING"
+  | "ACTIVE"
+  | "CANCEL_PENDING"
+  | "CANCELLED"
+  | "SUSPENDED"
+  | "PAST_DUE"
+  | "EXPIRED"
+  | "FAILED"
+  | "REFUNDED";
+
+export interface AdminUserResponse {
+  id: number;
+  name: string;
+  email: string;
+  role: Role;
+  plan: PlanType;
+  planExpiresAt: string | null;
+  imageCredits: number;
+  messagesUsed: number;
+  ageVerified: boolean;
+  createdAt: string;
+  active: boolean;
+  deletedAt: string | null;
+}
+
+export interface AdminDashboardResponse {
+  totalUsers: number;
+  activeUsers: number;
+  newUsersLast30Days: number;
+  usersByPlan: Partial<Record<PlanType, number>>;
+  activeSubscriptionsByPlan: Partial<Record<PlanType, number>>;
+  estimatedMonthlyRevenueMxn: number;
+  revenueByPlanMxn: Partial<Record<PlanType, number>>;
+  totalImagesGenerated: number;
+  totalConversations: number;
+  totalMessages: number;
+  totalCreditsGranted: number;
+  totalCreditsSpent: number;
+  paymentsByStatus: Partial<Record<PaymentStatus, number>>;
+}
+
+export interface AdminConversationResponse {
+  id: number;
+  userEmail: string;
+  characterSlug: string;
+  characterName: string;
+  messageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminImageGenerationResponse {
+  id: number;
+  userEmail: string;
+  characterSlug: string;
+  userPrompt: string | null;
+  promptFinal: string;
+  imageUrl: string | null;
+  status: string;
+  provider: string;
+  creditsCost: number;
+  createdAt: string;
+  completedAt: string | null;
+}
+
 export const api = {
   register(data: { name: string; email: string; password: string; ageVerified: boolean }) {
     return request<AuthResponse>("/auth/register", {
@@ -303,5 +372,115 @@ export const api = {
       token,
       body: JSON.stringify(data),
     });
+  },
+
+  // ── Cuenta (autogestión) ──────────────────────────────────────────────────
+
+  updateName(token: string, name: string) {
+    return request<UserResponse>("/account/name", {
+      method: "PATCH",
+      token,
+      body: JSON.stringify({ name }),
+    });
+  },
+
+  changePassword(token: string, currentPassword: string, newPassword: string) {
+    return request<void>("/account/change-password", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  },
+
+  deleteAccount(token: string, password: string) {
+    return request<void>("/account", {
+      method: "DELETE",
+      token,
+      body: JSON.stringify({ password }),
+    });
+  },
+
+  // ── Admin ─────────────────────────────────────────────────────────────────
+
+  getAdminDashboard(token: string) {
+    return request<AdminDashboardResponse>("/admin/dashboard", { token });
+  },
+
+  getAdminUsers(token: string) {
+    return request<AdminUserResponse[]>("/admin/users", { token });
+  },
+
+  getAdminUser(token: string, id: number) {
+    return request<AdminUserResponse>(`/admin/users/${id}`, { token });
+  },
+
+  createAdminUser(token: string, data: { name: string; email: string; password: string; role: Role }) {
+    return request<AdminUserResponse>("/admin/users", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    });
+  },
+
+  updateAdminUserRole(token: string, id: number, role: Role) {
+    return request<AdminUserResponse>(`/admin/users/${id}/role`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify({ role }),
+    });
+  },
+
+  updateAdminUserActive(token: string, id: number, active: boolean) {
+    return request<AdminUserResponse>(`/admin/users/${id}/active`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify({ active }),
+    });
+  },
+
+  updateAdminUserPlan(token: string, id: number, plan: PlanType) {
+    return request<AdminUserResponse>(`/admin/users/${id}/plan`, {
+      method: "PUT",
+      token,
+      body: JSON.stringify({ plan }),
+    });
+  },
+
+  deleteAdminUser(token: string, id: number) {
+    return request<void>(`/admin/users/${id}`, {
+      method: "DELETE",
+      token,
+    });
+  },
+
+  getAdminCreditTransactions(
+    token: string,
+    filters: { userId?: number; email?: string; type?: CreditTransactionType; page?: number; size?: number } = {}
+  ) {
+    const params = new URLSearchParams();
+    if (filters.userId != null) params.set("userId", String(filters.userId));
+    if (filters.email) params.set("email", filters.email);
+    if (filters.type) params.set("type", filters.type);
+    params.set("page", String(filters.page ?? 0));
+    params.set("size", String(filters.size ?? 50));
+    return request<PageResponse<CreditTransactionResponse>>(`/admin/credits/transactions?${params.toString()}`, {
+      token,
+    });
+  },
+
+  adjustAdminCredits(token: string, data: { userId: number; amount: number; reason: string }) {
+    return request<CreditTransactionResponse>("/admin/credits/adjust", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    });
+  },
+
+  getAdminConversations(token: string) {
+    return request<AdminConversationResponse[]>("/admin/conversations", { token });
+  },
+
+  getAdminImageGenerations(token: string) {
+    return request<AdminImageGenerationResponse[]>("/admin/image-generations", { token });
   },
 };
