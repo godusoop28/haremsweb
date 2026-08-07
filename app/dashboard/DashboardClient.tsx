@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
+import AccountSettings from "@/components/AccountSettings";
 import { characters } from "@/lib/data";
 import {
   api,
@@ -379,7 +380,15 @@ export default function DashboardClient() {
 
         {user.role === "ADMIN" && (
           <div className="mt-10 glass rounded-2xl p-6 border border-amber-400/20">
-            <h2 className="text-lg font-semibold text-amber-300">Herramientas admin</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-amber-300">Herramientas admin</h2>
+              <Link
+                href="/admin"
+                className="rounded-full border border-amber-400/30 px-4 py-2 text-xs font-semibold text-amber-300 transition-colors hover:bg-amber-400/10"
+              >
+                Ir al panel de administración →
+              </Link>
+            </div>
             <p className="mt-1 text-xs text-slate-400">
               Simula cambios de plan. Solo visible para administradores.
             </p>
@@ -402,6 +411,8 @@ export default function DashboardClient() {
             {planFeedback && <p className="mt-3 text-xs text-slate-400">{planFeedback}</p>}
           </div>
         )}
+
+        <AccountSettings />
       </div>
     </section>
   );
