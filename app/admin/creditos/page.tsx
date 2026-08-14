@@ -60,7 +60,7 @@ function AdjustCreditsForm({ users, onAdjusted }: { users: AdminUserResponse[]; 
           <option value="">Selecciona un usuario…</option>
           {users.map((u) => (
             <option key={u.id} value={u.id}>
-              {u.email} (créditos: {u.imageCredits})
+              {u.email} (créditos extra: {u.imageCredits})
             </option>
           ))}
         </select>

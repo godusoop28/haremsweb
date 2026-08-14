@@ -206,7 +206,8 @@ export default function AdminUsersPage() {
               <th className="p-3">Usuario</th>
               <th className="p-3">Rol</th>
               <th className="p-3">Plan</th>
-              <th className="p-3 text-right">Créditos</th>
+              <th className="p-3 text-right">Imágenes periodo</th>
+              <th className="p-3 text-right">Créditos extra</th>
               <th className="p-3">Estado</th>
               <th className="p-3">Creado</th>
               <th className="p-3 text-right">Acciones</th>
@@ -247,6 +248,9 @@ export default function AdminUsersPage() {
                       ))}
                     </select>
                   </td>
+                  <td className="p-3 text-right font-mono">
+                    {u.imagesUsedThisPeriod} / {u.imagesLimitPerPeriod}
+                  </td>
                   <td className="p-3 text-right font-mono">{u.imageCredits}</td>
                   <td className="p-3">
                     <button
@@ -276,7 +280,7 @@ export default function AdminUsersPage() {
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="p-6 text-center text-sm text-slate-400">
+                <td colSpan={8} className="p-6 text-center text-sm text-slate-400">
                   No hay usuarios que coincidan con la búsqueda.
                 </td>
               </tr>

@@ -76,6 +76,7 @@ function friendlyReason(reason: string): string {
     PLAN_DOWNGRADE_TO_FREE: "Downgrade a Free",
   };
   if (map[reason]) return map[reason];
+  if (reason.startsWith("IMAGE_GENERATION_EXTRA_CREDIT:")) return "Imagen generada (crédito extra)";
   if (reason.startsWith("IMAGE_GENERATION:")) return "Imagen generada";
   if (reason.startsWith("IMAGE_BLOCKED_BY_PROVIDER:")) return "Imagen bloqueada (reembolso)";
   if (reason.startsWith("IMAGE_GENERATION_FAILED:")) return "Error de imagen (reembolso)";
@@ -251,11 +252,29 @@ export default function DashboardClient() {
           </div>
           <div className="glass rounded-2xl p-6">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-              Imágenes restantes
+              {subscription?.imageLimitPeriod === "DAILY"
+                ? "Imágenes disponibles hoy"
+                : "Imágenes disponibles esta semana"}
             </p>
             <p className="mt-2 text-2xl font-bold text-white">
-              {subscription ? subscription.imageCredits : "—"}
+              {subscription
+                ? `${Math.max(0, subscription.imagesLimitPerPeriod - subscription.imagesUsedThisPeriod)} / ${subscription.imagesLimitPerPeriod}`
+                : "—"}
             </p>
+            {subscription && (
+              <p className="mt-1 text-xs text-slate-500">
+                {subscription.imageLimitPeriod === "DAILY"
+                  ? "Límite diario · renovación diaria"
+                  : subscription.imageLimitPeriod === "WEEKLY"
+                    ? "Límite semanal · renovación semanal"
+                    : "Disponible en Premium o VIP"}
+              </p>
+            )}
+            {subscription && subscription.imageCredits > 0 && (
+              <p className="mt-1 text-xs font-medium text-cyan-400">
+                +{subscription.imageCredits} créditos extra disponibles
+              </p>
+            )}
           </div>
           <div className="glass rounded-2xl p-6">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">

@@ -130,12 +130,19 @@ export interface ChatResponse {
   messagesLimit: number | null;
 }
 
+export type ImageLimitPeriod = "NONE" | "DAILY" | "WEEKLY";
+
 export interface SubscriptionResponse {
   plan: PlanType;
   status: SubscriptionStatus;
   expiresAt: string | null;
+  /** Créditos extra (wallet independiente del plan, comprado aparte). */
   imageCredits: number;
   messagesUsed: number;
+  imagesUsedThisPeriod: number;
+  imagesLimitPerPeriod: number;
+  imageLimitPeriod: ImageLimitPeriod;
+  imagePeriodResetAt: string | null;
   billingProvider: string | null;
   subscriptionId: number | null;
   paypalSubscriptionId: string | null;
@@ -157,10 +164,11 @@ export interface ImageGenerationResponse {
   imageUrl: string;
   characterSlug: string;
   status: string;
-  creditsRemaining: number;
-  creditsCost: number;
-  highTrust: boolean;
-  messageCount: number;
+  imagesUsedThisPeriod: number;
+  imagesLimitPerPeriod: number;
+  imageLimitPeriod: ImageLimitPeriod;
+  extraCreditsRemaining: number;
+  usedExtraCredit: boolean;
 }
 
 export type CreditTransactionType =
@@ -175,8 +183,15 @@ export type CreditProvider =
   | "INTERNAL"
   | "PAYPAL"
   | "FAL"
+  | "RUNWARE"
   | "OPENROUTER"
   | "SYSTEM";
+
+export interface ExtraCreditPackage {
+  id: string;
+  credits: number;
+  priceMxn: number;
+}
 
 export interface CreditTransactionResponse {
   id: number;
@@ -221,8 +236,12 @@ export interface AdminUserResponse {
   role: Role;
   plan: PlanType;
   planExpiresAt: string | null;
+  /** Créditos extra (wallet independiente del plan). */
   imageCredits: number;
   messagesUsed: number;
+  imagesUsedThisPeriod: number;
+  imagesLimitPerPeriod: number;
+  imageLimitPeriod: ImageLimitPeriod;
   ageVerified: boolean;
   createdAt: string;
   active: boolean;
@@ -264,7 +283,14 @@ export interface AdminImageGenerationResponse {
   imageUrl: string | null;
   status: string;
   provider: string;
+  model: string | null;
+  costUsd: number | null;
   creditsCost: number;
+  errorCode: string | null;
+  errorMessage: string | null;
+  usedReferenceImage: boolean | null;
+  usedPulid: boolean | null;
+  durationMs: number | null;
   createdAt: string;
   completedAt: string | null;
 }
@@ -352,6 +378,10 @@ export const api = {
       `/credits/transactions/me?page=${page}&size=${size}`,
       { token }
     );
+  },
+
+  getExtraCreditPackages(token: string) {
+    return request<ExtraCreditPackage[]>("/credits/packages", { token });
   },
 
   generateImage(

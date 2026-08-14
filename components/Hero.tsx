@@ -12,7 +12,7 @@ export default function Hero() {
           <div className="mx-auto max-w-2xl text-center lg:mx-0 lg:max-w-xl lg:text-left">
             <span className="glass-strong inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-widest text-cyan-300 shadow-[0_0_25px_-8px_rgba(34,211,238,0.6)]">
               <span className="h-1.5 w-1.5 animate-pulse-glow rounded-full bg-cyan-400" />
-              12 personalidades IA disponibles
+              16 personalidades IA disponibles
             </span>
 
             <h1 className="mt-6" aria-label="HAREMS">
@@ -52,7 +52,7 @@ export default function Hero() {
 
         <div className="mx-auto mt-20 grid max-w-5xl grid-cols-2 gap-4 sm:grid-cols-4 lg:mx-0">
           {[
-            { value: "12 chicas IA", label: "Personalidades únicas" },
+            { value: "16 chicas IA", label: "Personalidades únicas" },
             { value: "Chat", label: "Personalizado" },
             { value: "Premium", label: "Personajes exclusivos" },
             { value: "Privada", label: "Experiencia 100% tuya" },

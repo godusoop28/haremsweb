@@ -22,7 +22,7 @@ export default function FeaturedCharacters() {
             href="/personajes"
             className="glass shrink-0 rounded-full px-5 py-2.5 text-sm font-semibold text-cyan-300 transition-colors hover:border-cyan-400/40"
           >
-            Ver los 12 personajes
+            Ver los 16 personajes
           </Link>
         </div>
 

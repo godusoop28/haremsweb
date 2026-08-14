@@ -14,7 +14,7 @@ export default async function PersonajesPage() {
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-2xl text-center">
           <span className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium text-cyan-300">
-            12 personalidades disponibles
+            16 personalidades disponibles
           </span>
           <h1 className="mt-5 text-3xl font-bold text-white sm:text-5xl">
             Elige a tu <span className="text-gradient">compañera ideal</span>

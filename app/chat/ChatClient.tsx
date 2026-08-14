@@ -8,8 +8,23 @@ import ConnectionMeter from "@/components/ConnectionMeter";
 import PremiumBadge from "@/components/PremiumBadge";
 import UpgradeModal from "@/components/UpgradeModal";
 import { characters } from "@/lib/data";
-import { api, ApiError, type CharacterResponse, type PlanType } from "@/lib/api";
+import { api, ApiError, type CharacterResponse, type ImageLimitPeriod, type PlanType } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+
+interface ImageUsageState {
+  usedThisPeriod: number;
+  limitPerPeriod: number;
+  period: ImageLimitPeriod;
+  extraCredits: number;
+}
+
+function imagesRemainingInPeriod(usage: ImageUsageState): number {
+  return Math.max(0, usage.limitPerPeriod - usage.usedThisPeriod);
+}
+
+function periodWord(period: ImageLimitPeriod): string {
+  return period === "DAILY" ? "hoy" : "esta semana";
+}
 
 interface Message {
   from: "user" | "ai" | "system";
@@ -55,7 +70,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
-  const [imageCredits, setImageCredits] = useState<number | null>(null);
+  const [imageUsage, setImageUsage] = useState<ImageUsageState | null>(null);
   const [imageLevel, setImageLevel] = useState<"SAFE" | "SENSUAL" | "NUDE" | "EXPLICIT">("NUDE");
   const [usage, setUsage] = useState<Record<string, { used: number; limit: number | null }>>({});
   // Gate: true cuando getConversations() ha terminado (con éxito o error).
@@ -81,10 +96,17 @@ export default function ChatClient({ initialId }: { initialId: string }) {
 
     api.getCharacters().then(setRemoteCharacters).catch(() => {});
 
-    // Fetch current image credit balance once on load
+    // Fetch current image usage (plan allowance + extra credits) once on load
     api
       .getSubscription(token)
-      .then((sub) => setImageCredits(sub.imageCredits))
+      .then((sub) =>
+        setImageUsage({
+          usedThisPeriod: sub.imagesUsedThisPeriod,
+          limitPerPeriod: sub.imagesLimitPerPeriod,
+          period: sub.imageLimitPeriod,
+          extraCredits: sub.imageCredits,
+        })
+      )
       .catch(() => {});
 
     api
@@ -161,7 +183,9 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   // ── Image generation capability ──────────────────────────────────────────────
   const isPaidUser = user?.plan !== "FREE";
   const characterSupportsImages = remote?.imageGenerationEnabled ?? false;
-  const hasCredits = imageCredits === null || imageCredits > 0; // null = not yet loaded → optimistic
+  // null = not yet loaded → optimistic. Otherwise: cupo del plan disponible O créditos extra disponibles.
+  const hasImageQuota =
+    imageUsage === null || imagesRemainingInPeriod(imageUsage) > 0 || imageUsage.extraCredits > 0;
   const imageEnabled = isPaidUser && characterSupportsImages;
 
   // ── Send chat message ────────────────────────────────────────────────────────
@@ -195,7 +219,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           message: err.message,
           benefits: [
             "Chat ilimitado con todas las chicas",
-            "12 personajes desbloqueadas",
+            "16 personajes desbloqueadas",
             "Generación de imágenes incluida",
             "Cancela cuando quieras",
           ],
@@ -218,9 +242,9 @@ export default function ChatClient({ initialId }: { initialId: string }) {
     if (!isPaidUser) {
       setUpgradeModal({
         title: "Imágenes disponibles en Premium",
-        message: "Genera fotos de tus personajes favoritas con créditos mensuales.",
+        message: "Genera fotos de tus personajes favoritas cada semana.",
         benefits: [
-          "30 créditos de imagen al mes",
+          "15 imágenes por semana",
           "Niveles Normal, Sensual y Sin ropa",
           "Historial de imágenes guardado",
           "Nivel Explícita disponible en VIP",
@@ -238,14 +262,14 @@ export default function ChatClient({ initialId }: { initialId: string }) {
       return;
     }
 
-    if (imageCredits !== null && imageCredits <= 0) {
+    if (imageUsage !== null && !hasImageQuota) {
       setUpgradeModal({
-        title: "Sin créditos de imagen",
-        message: "Agotaste tus créditos del mes. Mejora a VIP para obtener más o espera la renovación.",
+        title: "Sin imágenes disponibles",
+        message: `Ya usaste tus imágenes disponibles de ${periodWord(imageUsage.period)}. Puedes comprar créditos extra o esperar la renovación de tu límite.`,
         benefits: [
-          "VIP incluye 100 créditos al mes",
+          "VIP incluye 30 imágenes por semana",
           "Nivel Explícita desbloqueado en VIP",
-          "Los créditos se renuevan cada mes",
+          "Compra créditos extra sin esperar la renovación",
         ],
         ctaLabel: "Ver planes",
       });
@@ -261,13 +285,17 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         style: "premium-realistic-anime",
         adultLevel: imageLevel,
       });
-      setImageCredits(response.creditsRemaining);
-      const costNote = !response.highTrust && response.creditsCost > 1
-        ? ` (costó ${response.creditsCost} créditos — todavía no me conoces bien)`
-        : "";
+      const nextUsage: ImageUsageState = {
+        usedThisPeriod: response.imagesUsedThisPeriod,
+        limitPerPeriod: response.imagesLimitPerPeriod,
+        period: response.imageLimitPeriod,
+        extraCredits: response.extraCreditsRemaining,
+      };
+      setImageUsage(nextUsage);
+      const costNote = response.usedExtraCredit ? " (usó 1 crédito extra)" : "";
       appendMessage(selectedId, {
         from: "ai",
-        text: `Aquí tienes${costNote}. Créditos restantes: ${response.creditsRemaining}.`,
+        text: `Aquí tienes${costNote}. Imágenes disponibles ${periodWord(nextUsage.period)}: ${imagesRemainingInPeriod(nextUsage)}.`,
         imageUrl: response.imageUrl,
       });
     } catch (err) {
@@ -277,7 +305,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
       }
       if (err instanceof ApiError && err.status === 403) {
         setUpgradeModal({
-          title: "Sin créditos disponibles",
+          title: "Sin imágenes disponibles",
           message: err.message,
           ctaLabel: "Ver planes",
         });
@@ -285,25 +313,56 @@ export default function ChatClient({ initialId }: { initialId: string }) {
       }
       if (err instanceof ApiError && err.status === 422) {
         if (err.code === "IMAGE_PROVIDER_BLOCKED") {
-          // El proveedor no pudo generar — créditos reembolsados por backend
+          appendMessage(selectedId, { from: "system", text: err.message });
+        } else {
+          // Fallo genérico del proveedor — límite/créditos reembolsados por backend
           appendMessage(selectedId, {
             from: "system",
-            text: "Estamos preparando la imagen, inténtalo de nuevo en unos segundos.",
+            text: err.message || "No se pudo generar la imagen en este momento. Intenta más tarde.",
           });
-          // Refrescar créditos porque el backend los reembolsó
-          if (token) {
-            api.getSubscription(token).then((sub) => setImageCredits(sub.imageCredits)).catch(() => {});
-          }
-        } else {
-          appendMessage(selectedId, { from: "system", text: err.message });
+        }
+        // Refrescar el estado porque el backend reembolsó el cupo o el crédito extra
+        if (token) {
+          api
+            .getSubscription(token)
+            .then((sub) =>
+              setImageUsage({
+                usedThisPeriod: sub.imagesUsedThisPeriod,
+                limitPerPeriod: sub.imagesLimitPerPeriod,
+                period: sub.imageLimitPeriod,
+                extraCredits: sub.imageCredits,
+              })
+            )
+            .catch(() => {});
         }
         return;
       }
       if (err instanceof ApiError && err.status === 400) {
         appendMessage(selectedId, {
           from: "system",
-          text: "No se puede generar ese tipo de imagen.",
+          text: err.message || "No se puede generar ese tipo de imagen.",
         });
+        return;
+      }
+      if (err instanceof ApiError && err.status === 502) {
+        // Fallo del proveedor (Runware) — límite/crédito extra ya reembolsado por backend
+        appendMessage(selectedId, {
+          from: "system",
+          text: err.message || "No se pudo generar la imagen en este momento. Intenta más tarde.",
+        });
+        if (token) {
+          api
+            .getSubscription(token)
+            .then((sub) =>
+              setImageUsage({
+                usedThisPeriod: sub.imagesUsedThisPeriod,
+                limitPerPeriod: sub.imagesLimitPerPeriod,
+                period: sub.imageLimitPeriod,
+                extraCredits: sub.imageCredits,
+              })
+            )
+            .catch(() => {});
+        }
         return;
       }
       appendMessage(selectedId, {
@@ -325,7 +384,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           benefits: [
             `Chat privado con ${characterName}`,
             "Generación de imágenes nivel Explícita",
-            "100 créditos de imagen al mes",
+            "30 imágenes por semana",
             "Acceso a todos los personajes Premium",
           ],
           ctaLabel: "Desbloquear VIP",
@@ -336,8 +395,8 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           message: "Desbloquea Premium para chatear con ella y generar imágenes exclusivas.",
           benefits: [
             `Chat ilimitado con ${characterName}`,
-            "12 personajes desbloqueados",
-            "30 créditos de imagen al mes",
+            "16 personajes desbloqueados",
+            "15 imágenes por semana",
             "Imágenes Normal, Sensual y Sin ropa",
           ],
           ctaLabel: "Desbloquear Premium",
@@ -360,12 +419,14 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   function imageButtonTitle() {
     if (!isPaidUser) return "Disponible en Premium";
     if (!characterSupportsImages) return "No disponible para este personaje";
-    if (imageCredits !== null && imageCredits <= 0) return "Sin créditos de imagen";
+    if (imageUsage !== null && !hasImageQuota) {
+      return imageUsage.period === "DAILY" ? "Sin imágenes disponibles hoy" : "Sin imágenes disponibles esta semana";
+    }
     if (generatingImage) return "Generando imagen…";
     return "Generar imagen";
   }
 
-  const imageButtonDisabled = !imageEnabled || generatingImage || (imageCredits !== null && imageCredits <= 0);
+  const imageButtonDisabled = !imageEnabled || generatingImage || (imageUsage !== null && !hasImageQuota);
 
   return (
     <div className="chat-bg flex h-[calc(100dvh-65px)] flex-col overflow-hidden lg:mx-auto lg:max-w-7xl lg:flex-row">
@@ -457,15 +518,16 @@ export default function ChatClient({ initialId }: { initialId: string }) {
               <span className="hidden text-[11px] text-slate-500 sm:inline">
                 Dificultad: {character.difficulty}
               </span>
-              {imageEnabled && imageCredits !== null && (
+              {imageEnabled && imageUsage !== null && (
                 <span
                   className={`text-[11px] font-medium ${
-                    imageCredits <= 0 ? "text-amber-400" : "text-cyan-400"
+                    !hasImageQuota ? "text-amber-400" : "text-cyan-400"
                   }`}
                 >
-                  {imageCredits > 0
-                    ? `${imageCredits} crédito${imageCredits !== 1 ? "s" : ""} foto`
-                    : "Sin créditos foto"}
+                  {hasImageQuota
+                    ? `${imagesRemainingInPeriod(imageUsage)} img ${periodWord(imageUsage.period)}`
+                    : `Sin imágenes ${periodWord(imageUsage.period)}`}
+                  {imageUsage.extraCredits > 0 && ` · +${imageUsage.extraCredits} extra`}
                 </span>
               )}
             </div>
@@ -602,8 +664,8 @@ export default function ChatClient({ initialId }: { initialId: string }) {
                   ? "Generando…"
                   : !isPaidUser
                     ? "Solo Premium"
-                    : imageCredits !== null && imageCredits <= 0
-                      ? "Sin créditos"
+                    : imageUsage !== null && !hasImageQuota
+                      ? "Sin imágenes"
                       : "Generar foto"}
               </span>
             </button>
