@@ -73,6 +73,17 @@ export type SubscriptionStatus =
   | "PAST_DUE";
 export type AccessType = "FREE" | "PREMIUM" | "VIP";
 export type SenderType = "USER" | "AI";
+export type MessageType = "TEXT" | "IMAGE" | "SYSTEM";
+export type AdultLevel = "SAFE" | "SENSUAL" | "NUDE" | "EXPLICIT";
+export type RelationshipStatus = "DESCONOCIDA" | "CURIOSA" | "INTERESADA" | "CONFIADA" | "CONEXION_ESPECIAL";
+
+export const relationshipStatusLabels: Record<RelationshipStatus, string> = {
+  DESCONOCIDA: "Desconocida",
+  CURIOSA: "Curiosa",
+  INTERESADA: "Interesada",
+  CONFIADA: "Confiada",
+  CONEXION_ESPECIAL: "Conexión especial",
+};
 
 export interface UserResponse {
   id: number;
@@ -110,6 +121,9 @@ export interface MessageResponse {
   id: number;
   sender: SenderType;
   content: string;
+  messageType: MessageType;
+  imageUrl: string | null;
+  imageGenerationId: number | null;
   createdAt: string;
 }
 
@@ -128,6 +142,25 @@ export interface ChatResponse {
   reply: string;
   messagesUsed: number;
   messagesLimit: number | null;
+  connectionLevel: number;
+  relationshipStatus: RelationshipStatus;
+  connectionLeveledUp: boolean;
+}
+
+export interface RelationshipResponse {
+  characterSlug: string;
+  characterName: string;
+  connectionPoints: number;
+  connectionLevel: number;
+  maxLevel: number;
+  relationshipStatus: RelationshipStatus;
+  progressPercent: number;
+  nextLevelAt: number | null;
+  totalUserMessages: number;
+  totalAiMessages: number;
+  imagesGenerated: number;
+  firstInteractionAt: string | null;
+  lastInteractionAt: string | null;
 }
 
 export type ImageLimitPeriod = "NONE" | "DAILY" | "WEEKLY";
@@ -150,6 +183,16 @@ export interface SubscriptionResponse {
   canCancel: boolean;
 }
 
+export interface PlanInfoResponse {
+  plan: PlanType;
+  name: string;
+  priceMxn: number;
+  imagesPerPeriod: number;
+  imageLimitPeriod: ImageLimitPeriod;
+  maxAdultLevel: AdultLevel | null;
+  durationDays: number | null;
+}
+
 export interface PayPalSubscriptionResponse {
   provider: string;
   plan: PlanType;
@@ -169,6 +212,21 @@ export interface ImageGenerationResponse {
   imageLimitPeriod: ImageLimitPeriod;
   extraCreditsRemaining: number;
   usedExtraCredit: boolean;
+  connectionLevel: number;
+  relationshipStatus: RelationshipStatus;
+  connectionLeveledUp: boolean;
+}
+
+export interface ImageGalleryItemResponse {
+  id: number;
+  imageUrl: string;
+  characterSlug: string;
+  characterName: string;
+  characterImageUrl: string;
+  adultLevel: AdultLevel | null;
+  status: string;
+  usedExtraCredit: boolean;
+  createdAt: string;
 }
 
 export type CreditTransactionType =
@@ -402,6 +460,26 @@ export const api = {
       token,
       body: JSON.stringify(data),
     });
+  },
+
+  getRelationships(token: string) {
+    return request<RelationshipResponse[]>("/relationships", { token });
+  },
+
+  getRelationship(token: string, characterSlug: string) {
+    return request<RelationshipResponse>(`/relationships/${characterSlug}`, { token });
+  },
+
+  getPlans() {
+    return request<PlanInfoResponse[]>("/plans");
+  },
+
+  getMyImages(token: string, filters: { characterSlug?: string; page?: number; size?: number } = {}) {
+    const params = new URLSearchParams();
+    if (filters.characterSlug) params.set("characterSlug", filters.characterSlug);
+    params.set("page", String(filters.page ?? 0));
+    params.set("size", String(filters.size ?? 24));
+    return request<PageResponse<ImageGalleryItemResponse>>(`/images/mine?${params.toString()}`, { token });
   },
 
   // ── Cuenta (autogestión) ──────────────────────────────────────────────────

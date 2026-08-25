@@ -2,25 +2,12 @@
 
 import Link from "next/link";
 import type { Character } from "@/lib/data";
-import type { PlanType } from "@/lib/api";
+import { canAccessLabel } from "@/lib/access";
 import { useAuth } from "@/lib/auth-context";
-
-const accessRank: Record<Character["access"], number> = {
-  Gratis: 0,
-  Premium: 1,
-  "Premium / VIP": 2,
-};
-
-const planRank: Record<PlanType, number> = {
-  FREE: 0,
-  TRIAL_3_DAYS: 1,
-  PREMIUM: 1,
-  VIP: 2,
-};
 
 export default function CharacterDetailActions({ character }: { character: Character }) {
   const { user } = useAuth();
-  const locked = planRank[user?.plan ?? "FREE"] < accessRank[character.access];
+  const locked = !canAccessLabel(user?.plan, character.access);
 
   return (
     <div className="mt-8 flex flex-col gap-3 sm:w-fit sm:flex-row">

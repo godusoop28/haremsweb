@@ -4,11 +4,21 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
-import ConnectionMeter from "@/components/ConnectionMeter";
+import LiveConnectionMeter from "@/components/LiveConnectionMeter";
 import PremiumBadge from "@/components/PremiumBadge";
 import UpgradeModal from "@/components/UpgradeModal";
 import { characters } from "@/lib/data";
-import { api, ApiError, type CharacterResponse, type ImageLimitPeriod, type PlanType } from "@/lib/api";
+import { canAccessType } from "@/lib/access";
+import { useRemoteCharacters } from "@/lib/useCharacters";
+import {
+  api,
+  ApiError,
+  relationshipStatusLabels,
+  type AdultLevel,
+  type CharacterResponse,
+  type ImageLimitPeriod,
+  type RelationshipResponse,
+} from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 interface ImageUsageState {
@@ -27,9 +37,11 @@ function periodWord(period: ImageLimitPeriod): string {
 }
 
 interface Message {
-  from: "user" | "ai" | "system";
+  from: "user" | "ai" | "system" | "levelup";
   text: string;
   imageUrl?: string;
+  adultLevel?: AdultLevel;
+  createdAt?: string;
 }
 
 interface UpgradeModalState {
@@ -39,39 +51,67 @@ interface UpgradeModalState {
   ctaLabel?: string;
 }
 
-const planRank: Record<PlanType, number> = {
-  FREE: 0,
-  TRIAL_3_DAYS: 1,
-  PREMIUM: 1,
-  VIP: 2,
+const levelLabels: Record<AdultLevel, string> = {
+  SAFE: "Normal",
+  SENSUAL: "Sensual",
+  NUDE: "Sin ropa",
+  EXPLICIT: "Explícita",
 };
 
-const accessRank: Record<CharacterResponse["accessType"], number> = {
-  FREE: 0,
-  PREMIUM: 1,
-  VIP: 2,
-};
+const SCENE_PRESETS: { label: string; value: string }[] = [
+  { label: "Habitación", value: "intimate bedroom with warm lighting" },
+  { label: "Hotel", value: "luxury hotel suite with soft warm lighting" },
+  { label: "Terraza nocturna", value: "rooftop terrace at night with city lights below" },
+  { label: "Playa", value: "beach at golden sunset with soft waves" },
+  { label: "Piscina", value: "private poolside with crystal water" },
+  { label: "Oficina", value: "private elegant office at night" },
+  { label: "Gimnasio", value: "modern gym with mirrored walls" },
+];
 
-function canAccess(plan: PlanType | undefined, accessType: CharacterResponse["accessType"]) {
-  if (!plan) return accessType === "FREE";
-  return planRank[plan] >= accessRank[accessType];
-}
+const POSE_PRESETS: { label: string; value: string }[] = [
+  { label: "Retrato", value: "close portrait framing, natural relaxed pose" },
+  { label: "De pie", value: "standing confident pose" },
+  { label: "Sentada", value: "sitting relaxed pose" },
+  { label: "Mirando a cámara", value: "looking directly at camera, engaging gaze" },
+  { label: "Espontánea", value: "candid natural spontaneous pose" },
+];
+
+const ASPECT_OPTIONS: { label: string; value: "portrait" | "square" | "landscape" }[] = [
+  { label: "Retrato", value: "portrait" },
+  { label: "Cuadrada", value: "square" },
+  { label: "Horizontal", value: "landscape" },
+];
+
+const AUTO = "Automática";
+const CUSTOM = "Personalizada";
 
 export default function ChatClient({ initialId }: { initialId: string }) {
   const { user, token, loading: authLoading } = useAuth();
   const router = useRouter();
+  const remoteCharacters = useRemoteCharacters();
 
   const initialCharacter = characters.find((c) => c.id === initialId) ?? characters[0];
   const [selectedId, setSelectedId] = useState(initialCharacter.id);
   const [messagesByChar, setMessagesByChar] = useState<Record<string, Message[]>>({});
   const [conversationIds, setConversationIds] = useState<Record<string, number>>({});
   const [loadedChars, setLoadedChars] = useState<Record<string, boolean>>({});
-  const [remoteCharacters, setRemoteCharacters] = useState<CharacterResponse[]>([]);
+  const [relationships, setRelationships] = useState<Record<string, RelationshipResponse>>({});
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [imageUsage, setImageUsage] = useState<ImageUsageState | null>(null);
-  const [imageLevel, setImageLevel] = useState<"SAFE" | "SENSUAL" | "NUDE" | "EXPLICIT">("NUDE");
+  const [imageLevel, setImageLevel] = useState<AdultLevel>("NUDE");
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+  // ── Personalización de la generación ────────────────────────────────────────
+  const [showCustomize, setShowCustomize] = useState(false);
+  const [sceneChoice, setSceneChoice] = useState<string>(AUTO);
+  const [customSceneText, setCustomSceneText] = useState("");
+  const [poseChoice, setPoseChoice] = useState<string>(AUTO);
+  const [customPoseText, setCustomPoseText] = useState("");
+  const [aspectRatio, setAspectRatio] = useState<"portrait" | "square" | "landscape">("portrait");
+  const [customPrompt, setCustomPrompt] = useState("");
+
   const [usage, setUsage] = useState<Record<string, { used: number; limit: number | null }>>({});
   // Gate: true cuando getConversations() ha terminado (con éxito o error).
   // Evita que el historial se cargue antes de tener los IDs reales.
@@ -82,6 +122,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   const character = characters.find((c) => c.id === selectedId)!;
   const remote = remoteCharacters.find((c) => c.slug === selectedId);
   const messages = messagesByChar[selectedId] ?? [];
+  const relationship = relationships[selectedId];
 
   // ── Auth guard ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -90,13 +131,10 @@ export default function ChatClient({ initialId }: { initialId: string }) {
     }
   }, [authLoading, token, router, initialId]);
 
-  // ── Load characters + subscription (image credits) ───────────────────────────
+  // ── Load subscription + conversations index ───────────────────────────────────
   useEffect(() => {
     if (!token) return;
 
-    api.getCharacters().then(setRemoteCharacters).catch(() => {});
-
-    // Fetch current image usage (plan allowance + extra credits) once on load
     api
       .getSubscription(token)
       .then((sub) =>
@@ -120,15 +158,11 @@ export default function ChatClient({ initialId }: { initialId: string }) {
       })
       .catch(() => {})
       .finally(() => {
-        // Marcar como cargado siempre (éxito o error) para que el historial pueda cargar
         setConversationsLoaded(true);
       });
   }, [token]);
 
   // ── Load conversation history per character ───────────────────────────────────
-  // IMPORTANTE: esperamos a que conversationsLoaded=true antes de cargar el historial.
-  // Sin ese gate, el efecto corría con conversationIds={} (vacío) y marcaba el personaje
-  // como "ya cargado" antes de tener los IDs reales → historial nunca se cargaba → mensajes "desaparecían".
   useEffect(() => {
     if (!token || !conversationsLoaded || loadedChars[selectedId]) return;
 
@@ -137,7 +171,6 @@ export default function ChatClient({ initialId }: { initialId: string }) {
     setLoadedChars((prev) => ({ ...prev, [selectedId]: true }));
 
     if (conversationId === undefined) {
-      // Personaje sin conversación previa → mostrar saludo
       setMessagesByChar((prev) => ({
         ...prev,
         [selectedId]: [{ from: "ai", text: character.greeting }],
@@ -151,6 +184,8 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         const loaded: Message[] = conversation.messages.map((m) => ({
           from: m.sender === "USER" ? "user" : "ai",
           text: m.content,
+          imageUrl: m.messageType === "IMAGE" && m.imageUrl ? m.imageUrl : undefined,
+          createdAt: m.createdAt,
         }));
         setMessagesByChar((prev) => ({
           ...prev,
@@ -165,6 +200,15 @@ export default function ChatClient({ initialId }: { initialId: string }) {
       });
   }, [token, selectedId, conversationIds, conversationsLoaded, loadedChars, character.greeting]);
 
+  // ── Load real connection progress for the selected character ─────────────────
+  useEffect(() => {
+    if (!token) return;
+    api
+      .getRelationship(token, selectedId)
+      .then((rel) => setRelationships((prev) => ({ ...prev, [selectedId]: rel })))
+      .catch(() => {});
+  }, [token, selectedId]);
+
   // ── Auto-scroll ──────────────────────────────────────────────────────────────
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -177,13 +221,27 @@ export default function ChatClient({ initialId }: { initialId: string }) {
     }));
   }
 
+  function refreshRelationship(slug: string) {
+    if (!token) return;
+    api
+      .getRelationship(token, slug)
+      .then((rel) => setRelationships((prev) => ({ ...prev, [slug]: rel })))
+      .catch(() => {});
+  }
+
+  function notifyLevelUp(charId: string, charName: string, status: RelationshipResponse["relationshipStatus"]) {
+    appendMessage(charId, {
+      from: "levelup",
+      text: `Tu conexión con ${charName} subió de nivel · ${relationshipStatusLabels[status]}`,
+    });
+  }
+
   const charUsage = usage[selectedId];
   const limitReached = charUsage?.limit != null && charUsage.used >= charUsage.limit;
 
   // ── Image generation capability ──────────────────────────────────────────────
   const isPaidUser = user?.plan !== "FREE";
   const characterSupportsImages = remote?.imageGenerationEnabled ?? false;
-  // null = not yet loaded → optimistic. Otherwise: cupo del plan disponible O créditos extra disponibles.
   const hasImageQuota =
     imageUsage === null || imagesRemainingInPeriod(imageUsage) > 0 || imageUsage.extraCredits > 0;
   const imageEnabled = isPaidUser && characterSupportsImages;
@@ -208,6 +266,10 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         ...prev,
         [selectedId]: { used: response.messagesUsed, limit: response.messagesLimit },
       }));
+      refreshRelationship(selectedId);
+      if (response.connectionLeveledUp) {
+        notifyLevelUp(selectedId, character.name, response.relationshipStatus);
+      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         router.replace(`/login?next=/chat?personaje=${selectedId}`);
@@ -227,12 +289,32 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         });
         return;
       }
+      if (err instanceof ApiError && err.status === 429) {
+        appendMessage(selectedId, {
+          from: "system",
+          text: "Vas muy rápido. Espera un momento antes de enviar otro mensaje.",
+        });
+        return;
+      }
       const message =
         err instanceof ApiError ? err.message : "Ocurrió un error inesperado. Inténtalo más tarde.";
       appendMessage(selectedId, { from: "system", text: message });
     } finally {
       setIsTyping(false);
     }
+  }
+
+  // ── Resolver escena/pose elegidas en el panel de personalización ─────────────
+  function resolveScene(): string | undefined {
+    if (sceneChoice === AUTO) return undefined;
+    if (sceneChoice === CUSTOM) return customSceneText.trim() || undefined;
+    return SCENE_PRESETS.find((s) => s.label === sceneChoice)?.value;
+  }
+
+  function resolvePose(): string | undefined {
+    if (poseChoice === AUTO) return undefined;
+    if (poseChoice === CUSTOM) return customPoseText.trim() || undefined;
+    return POSE_PRESETS.find((p) => p.label === poseChoice)?.value;
   }
 
   // ── Generate image ───────────────────────────────────────────────────────────
@@ -277,13 +359,17 @@ export default function ChatClient({ initialId }: { initialId: string }) {
     }
 
     setGeneratingImage(true);
+    const levelUsed = imageLevel;
 
     try {
       const response = await api.generateImage(token, {
         characterSlug: selectedId,
-        aspectRatio: "portrait",
+        aspectRatio,
         style: "premium-realistic-anime",
-        adultLevel: imageLevel,
+        adultLevel: levelUsed,
+        scene: resolveScene(),
+        pose: resolvePose(),
+        userPrompt: customPrompt.trim() || undefined,
       });
       const nextUsage: ImageUsageState = {
         usedThisPeriod: response.imagesUsedThisPeriod,
@@ -292,12 +378,16 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         extraCredits: response.extraCreditsRemaining,
       };
       setImageUsage(nextUsage);
-      const costNote = response.usedExtraCredit ? " (usó 1 crédito extra)" : "";
       appendMessage(selectedId, {
         from: "ai",
-        text: `Aquí tienes${costNote}. Imágenes disponibles ${periodWord(nextUsage.period)}: ${imagesRemainingInPeriod(nextUsage)}.`,
+        text: response.usedExtraCredit ? "Aquí tienes (usó 1 crédito extra)." : "Aquí tienes.",
         imageUrl: response.imageUrl,
+        adultLevel: levelUsed,
       });
+      refreshRelationship(selectedId);
+      if (response.connectionLeveledUp) {
+        notifyLevelUp(selectedId, character.name, response.relationshipStatus);
+      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         router.replace(`/login?next=/chat?personaje=${selectedId}`);
@@ -305,23 +395,27 @@ export default function ChatClient({ initialId }: { initialId: string }) {
       }
       if (err instanceof ApiError && err.status === 403) {
         setUpgradeModal({
-          title: "Sin imágenes disponibles",
+          title: err.message.toLowerCase().includes("vip") ? "Nivel disponible en VIP" : "Sin imágenes disponibles",
           message: err.message,
           ctaLabel: "Ver planes",
         });
         return;
       }
-      if (err instanceof ApiError && err.status === 422) {
-        if (err.code === "IMAGE_PROVIDER_BLOCKED") {
-          appendMessage(selectedId, { from: "system", text: err.message });
-        } else {
-          // Fallo genérico del proveedor — límite/créditos reembolsados por backend
-          appendMessage(selectedId, {
-            from: "system",
-            text: err.message || "No se pudo generar la imagen en este momento. Intenta más tarde.",
-          });
-        }
-        // Refrescar el estado porque el backend reembolsó el cupo o el crédito extra
+      if (err instanceof ApiError && err.status === 429) {
+        appendMessage(selectedId, {
+          from: "system",
+          text: "Estás generando imágenes muy rápido. Espera un momento e inténtalo de nuevo.",
+        });
+        return;
+      }
+      if (err instanceof ApiError && (err.status === 422 || err.status === 502)) {
+        appendMessage(selectedId, {
+          from: "system",
+          text:
+            err.code === "IMAGE_PROVIDER_BLOCKED"
+              ? err.message
+              : "No pudimos generar la imagen en este momento. Tu cupo fue restaurado — intenta de nuevo.",
+        });
         if (token) {
           api
             .getSubscription(token)
@@ -344,27 +438,6 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         });
         return;
       }
-      if (err instanceof ApiError && err.status === 502) {
-        // Fallo del proveedor (Runware) — límite/crédito extra ya reembolsado por backend
-        appendMessage(selectedId, {
-          from: "system",
-          text: err.message || "No se pudo generar la imagen en este momento. Intenta más tarde.",
-        });
-        if (token) {
-          api
-            .getSubscription(token)
-            .then((sub) =>
-              setImageUsage({
-                usedThisPeriod: sub.imagesUsedThisPeriod,
-                limitPerPeriod: sub.imagesLimitPerPeriod,
-                period: sub.imageLimitPeriod,
-                extraCredits: sub.imageCredits,
-              })
-            )
-            .catch(() => {});
-        }
-        return;
-      }
       appendMessage(selectedId, {
         from: "system",
         text: "No pudimos generar la imagen. Inténtalo de nuevo.",
@@ -375,7 +448,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   }
 
   function selectCharacter(c: CharacterResponse | undefined, id: string) {
-    if (c && !canAccess(user?.plan, c.accessType)) {
+    if (c && !canAccessType(user?.plan, c.accessType)) {
       const characterName = characters.find((ch) => ch.id === id)?.name ?? "Este personaje";
       if (c.accessType === "VIP") {
         setUpgradeModal({
@@ -415,7 +488,6 @@ export default function ChatClient({ initialId }: { initialId: string }) {
     );
   }
 
-  // Button tooltip text
   function imageButtonTitle() {
     if (!isPaidUser) return "Disponible en Premium";
     if (!characterSupportsImages) return "No disponible para este personaje";
@@ -469,7 +541,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         <div className="flex-1 space-y-1 p-2">
           {characters.map((c) => {
             const remoteC = remoteCharacters.find((r) => r.slug === c.id);
-            const locked = remoteC ? !canAccess(user?.plan, remoteC.accessType) : c.isPremium;
+            const locked = remoteC ? !canAccessType(user?.plan, remoteC.accessType) : c.isPremium;
             return (
               <button
                 key={c.id}
@@ -502,42 +574,41 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         {/* Header */}
         <div className="glass-strong shrink-0 border-b border-white/5 px-3 py-2.5 sm:px-6 sm:py-3">
           <div className="flex items-center gap-2.5 sm:gap-3">
-            <Avatar name={character.name} image={character.image} size="md" className="sm:h-20 sm:w-20" />
+            <Avatar name={character.name} image={character.image} size="md" className="sm:h-16 sm:w-16" />
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-sm font-semibold text-white sm:text-lg">
-                {character.name}
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="truncate text-sm font-semibold text-white sm:text-lg">
+                  {character.name}
+                </h2>
+                <PremiumBadge access={character.access} isPremium={character.isPremium} className="shrink-0" />
+              </div>
               <p className="truncate text-xs text-cyan-300/80 sm:text-sm">{character.archetype}</p>
-              <span className="mt-0.5 flex items-center gap-1.5 text-xs text-emerald-400">
-                <span className="h-1.5 w-1.5 animate-pulse-glow rounded-full bg-emerald-400" />
-                En línea
-              </span>
             </div>
-            <div className="flex shrink-0 flex-col items-end gap-1.5">
-              <PremiumBadge access={character.access} isPremium={character.isPremium} />
-              <span className="hidden text-[11px] text-slate-500 sm:inline">
-                Dificultad: {character.difficulty}
-              </span>
-              {imageEnabled && imageUsage !== null && (
+            {imageEnabled && imageUsage !== null && (
+              <div className="hidden shrink-0 flex-col items-end gap-0.5 sm:flex">
                 <span
-                  className={`text-[11px] font-medium ${
-                    !hasImageQuota ? "text-amber-400" : "text-cyan-400"
-                  }`}
+                  className={`text-[11px] font-medium ${!hasImageQuota ? "text-amber-400" : "text-cyan-400"}`}
                 >
                   {hasImageQuota
                     ? `${imagesRemainingInPeriod(imageUsage)} img ${periodWord(imageUsage.period)}`
                     : `Sin imágenes ${periodWord(imageUsage.period)}`}
                   {imageUsage.extraCredits > 0 && ` · +${imageUsage.extraCredits} extra`}
                 </span>
-              )}
-            </div>
+                <span className="text-[11px] text-slate-500">Dificultad: {character.difficulty}</span>
+              </div>
+            )}
           </div>
-          <ConnectionMeter
-            trustLevel={character.trustLevel}
-            relationshipStatus={character.relationshipStatus}
-            variant="compact"
-            className="mt-3 hidden sm:flex"
+
+          <LiveConnectionMeter
+            level={relationship?.connectionLevel ?? 1}
+            maxLevel={relationship?.maxLevel ?? 5}
+            status={relationship?.relationshipStatus ?? "DESCONOCIDA"}
+            progressPercent={relationship?.progressPercent ?? 0}
+            nextLevelAt={relationship?.nextLevelAt}
+            points={relationship?.connectionPoints}
+            className="mt-2.5 sm:mt-3"
           />
+
           {user?.plan === "FREE" && charUsage?.limit != null && (
             <div className="mt-2 flex items-center justify-between gap-3 text-xs sm:mt-3">
               <span className={limitReached ? "text-amber-300" : "text-slate-400"}>
@@ -558,37 +629,77 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         {/* Messages */}
         <div
           ref={scrollRef}
-          className="scroll-neon min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 sm:px-6 sm:py-6"
+          className="scroll-neon min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 py-4 sm:px-6 sm:py-6"
         >
-          {messages.map((message, idx) => (
-            <div
-              key={idx}
-              className={`flex ${message.from === "user" ? "justify-end" : "justify-start"}`}
-            >
-              {message.from === "ai" && (
-                <Avatar name={character.name} image={character.image} size="sm" className="mr-2 mt-auto hidden sm:block" />
-              )}
-              <div
-                className={`max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-lg sm:max-w-[60%] ${
-                  message.from === "user"
-                    ? "glow-button bg-gradient-to-br from-cyan-400 to-blue-600 text-white"
-                    : message.from === "system"
-                      ? "border border-amber-400/20 bg-amber-400/5 text-amber-200"
-                      : "border border-white/5 bg-slate-900/70 text-slate-200 backdrop-blur-md"
-                }`}
-              >
-                {message.text}
-                {message.imageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={message.imageUrl}
-                    alt="Imagen generada"
-                    className="mt-2 w-full max-w-xs rounded-xl"
-                  />
+          {messages.map((message, idx) => {
+            if (message.from === "system" || message.from === "levelup") {
+              return (
+                <div key={idx} className="flex justify-center">
+                  <span
+                    className={`rounded-full border px-3 py-1 text-center text-[11px] ${
+                      message.from === "levelup"
+                        ? "border-cyan-400/20 bg-cyan-400/5 text-cyan-300"
+                        : "border-amber-400/20 bg-amber-400/5 text-amber-200"
+                    }`}
+                  >
+                    {message.text}
+                  </span>
+                </div>
+              );
+            }
+
+            return (
+              <div key={idx} className={`flex ${message.from === "user" ? "justify-end" : "justify-start"}`}>
+                {message.from === "ai" && (
+                  <Avatar name={character.name} image={character.image} size="sm" className="mr-2 mt-auto hidden sm:block" />
                 )}
+                <div
+                  className={`max-w-[85%] whitespace-pre-wrap break-words rounded-2xl text-sm leading-relaxed shadow-lg sm:max-w-[60%] ${
+                    message.imageUrl ? "overflow-hidden p-1.5" : "px-4 py-2.5"
+                  } ${
+                    message.from === "user"
+                      ? "border border-cyan-400/30 bg-cyan-950/60 text-cyan-50"
+                      : message.imageUrl
+                        ? "border border-cyan-400/20 bg-slate-900/70 text-slate-200 backdrop-blur-md"
+                        : "border border-white/5 bg-slate-900/70 text-slate-200 backdrop-blur-md"
+                  }`}
+                >
+                  {message.imageUrl ? (
+                    <>
+                      <button
+                        onClick={() => setLightboxUrl(message.imageUrl!)}
+                        className="block w-full"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={message.imageUrl}
+                          alt={`Imagen generada de ${character.name}`}
+                          className="w-full max-w-xs rounded-xl transition-opacity hover:opacity-90"
+                        />
+                      </button>
+                      <div className="flex items-center justify-between gap-2 px-2 pb-1 pt-2">
+                        {message.adultLevel && (
+                          <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-medium text-cyan-300">
+                            {levelLabels[message.adultLevel]}
+                          </span>
+                        )}
+                        {message.createdAt && (
+                          <span className="ml-auto text-[10px] text-slate-500">
+                            {new Date(message.createdAt).toLocaleTimeString("es-MX", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    message.text
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {isTyping && (
             <div className="flex justify-start">
@@ -602,74 +713,122 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           )}
         </div>
 
-        {/* Input bar */}
+        {/* Composer */}
         <div className="glass-strong shrink-0 border-t border-white/5 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
-          {/* Level selector — only visible when image generation is available */}
+          {/* Área A+B+C: controles de generación de imagen, agrupados visualmente aparte del chat */}
           {imageEnabled && (
-            <div className="mb-2 flex items-center gap-1.5">
-              <span className="text-[10px] text-slate-500">Foto:</span>
-              {(["SAFE", "SENSUAL", "NUDE", "EXPLICIT"] as const).map((lvl) => {
-                const labels: Record<string, string> = {
-                  SAFE: "Normal",
-                  SENSUAL: "Sensual",
-                  NUDE: "Sin ropa",
-                  EXPLICIT: "Explícita",
-                };
-                // EXPLICIT solo visible para VIP
-                if (lvl === "EXPLICIT" && user?.plan !== "VIP") return null;
-                return (
-                  <button
-                    key={lvl}
-                    onClick={() => setImageLevel(lvl)}
-                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors ${
-                      imageLevel === lvl
-                        ? "bg-cyan-400/20 text-cyan-300 border border-cyan-400/40"
-                        : "bg-white/5 text-slate-400 border border-white/5 hover:bg-white/10"
-                    }`}
-                  >
-                    {labels[lvl]}
-                  </button>
-                );
-              })}
+            <div className="mb-2.5 rounded-xl border border-cyan-400/10 bg-cyan-400/[0.03] p-2.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {(["SAFE", "SENSUAL", "NUDE", "EXPLICIT"] as const).map((lvl) => {
+                  if (lvl === "EXPLICIT" && user?.plan !== "VIP") return null;
+                  return (
+                    <button
+                      key={lvl}
+                      onClick={() => setImageLevel(lvl)}
+                      className={`rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                        imageLevel === lvl
+                          ? "border border-cyan-400/40 bg-cyan-400/20 text-cyan-300"
+                          : "border border-white/5 bg-white/5 text-slate-400 hover:bg-white/10"
+                      }`}
+                    >
+                      {levelLabels[lvl]}
+                    </button>
+                  );
+                })}
+
+                <button
+                  onClick={() => setShowCustomize((v) => !v)}
+                  className={`rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                    showCustomize
+                      ? "border border-cyan-400/40 bg-cyan-400/20 text-cyan-300"
+                      : "border border-white/5 bg-white/5 text-slate-400 hover:bg-white/10"
+                  }`}
+                >
+                  Personalizar {showCustomize ? "▲" : "▼"}
+                </button>
+
+                <button
+                  disabled={imageButtonDisabled}
+                  onClick={generateImage}
+                  title={imageButtonTitle()}
+                  className={`ml-auto flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                    imageButtonDisabled
+                      ? "cursor-not-allowed border-white/5 bg-white/5 text-slate-500"
+                      : "glow-button border-cyan-400/40 bg-gradient-to-r from-cyan-400 to-blue-600 text-white"
+                  }`}
+                >
+                  {generatingImage ? (
+                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3 16.5h.008v.008H3v-.008Zm0 0V18a2.25 2.25 0 0 0 2.25 2.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v10.5Z" />
+                    </svg>
+                  )}
+                  <span>{generatingImage ? "Generando…" : "Generar foto"}</span>
+                </button>
+              </div>
+
+              {showCustomize && (
+                <div className="mt-2.5 space-y-2 border-t border-white/5 pt-2.5">
+                  <PresetRow
+                    label="Escena"
+                    options={[AUTO, ...SCENE_PRESETS.map((s) => s.label), CUSTOM]}
+                    value={sceneChoice}
+                    onChange={setSceneChoice}
+                  />
+                  {sceneChoice === CUSTOM && (
+                    <input
+                      value={customSceneText}
+                      onChange={(e) => setCustomSceneText(e.target.value)}
+                      placeholder="Describe la escena…"
+                      maxLength={120}
+                      className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400/40 focus:outline-none"
+                    />
+                  )}
+
+                  <PresetRow
+                    label="Pose"
+                    options={[AUTO, ...POSE_PRESETS.map((p) => p.label), CUSTOM]}
+                    value={poseChoice}
+                    onChange={setPoseChoice}
+                  />
+                  {poseChoice === CUSTOM && (
+                    <input
+                      value={customPoseText}
+                      onChange={(e) => setCustomPoseText(e.target.value)}
+                      placeholder="Describe la pose…"
+                      maxLength={120}
+                      className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400/40 focus:outline-none"
+                    />
+                  )}
+
+                  <PresetRow
+                    label="Formato"
+                    options={ASPECT_OPTIONS.map((a) => a.label)}
+                    value={ASPECT_OPTIONS.find((a) => a.value === aspectRatio)?.label ?? "Retrato"}
+                    onChange={(label) => {
+                      const opt = ASPECT_OPTIONS.find((a) => a.label === label);
+                      if (opt) setAspectRatio(opt.value);
+                    }}
+                  />
+
+                  <input
+                    value={customPrompt}
+                    onChange={(e) => setCustomPrompt(e.target.value)}
+                    placeholder="Detalle extra (opcional)"
+                    maxLength={200}
+                    className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400/40 focus:outline-none"
+                  />
+                </div>
+              )}
             </div>
           )}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Image generation button */}
-            <button
-              disabled={imageButtonDisabled}
-              onClick={generateImage}
-              title={imageButtonTitle()}
-              className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-2.5 text-xs font-medium transition-colors sm:px-4 ${
-                imageButtonDisabled
-                  ? "cursor-not-allowed border-white/5 bg-white/5 text-slate-500"
-                  : "border-cyan-400/30 bg-cyan-400/10 text-cyan-300 hover:bg-cyan-400/20"
-              }`}
-            >
-              {generatingImage ? (
-                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-              ) : !imageEnabled ? (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                </svg>
-              ) : (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3 16.5h.008v.008H3v-.008Zm0 0V18a2.25 2.25 0 0 0 2.25 2.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v10.5Z" />
-                </svg>
-              )}
-              <span className="hidden sm:inline">
-                {generatingImage
-                  ? "Generando…"
-                  : !isPaidUser
-                    ? "Solo Premium"
-                    : imageUsage !== null && !hasImageQuota
-                      ? "Sin imágenes"
-                      : "Generar foto"}
-              </span>
-            </button>
 
+          {/* Área D: chat normal */}
+          <div className="flex items-center gap-2 sm:gap-3">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -705,6 +864,61 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           onClose={() => setUpgradeModal(null)}
         />
       )}
+
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button
+            onClick={() => setLightboxUrl(null)}
+            className="absolute right-4 top-4 rounded-full border border-white/10 bg-white/5 p-2 text-white hover:bg-white/10"
+            aria-label="Cerrar"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxUrl}
+            alt="Imagen ampliada"
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[90vh] max-w-full rounded-2xl object-contain shadow-2xl"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PresetRow({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="w-16 shrink-0 text-[10px] text-slate-500">{label}</span>
+      {options.map((opt) => (
+        <button
+          key={opt}
+          onClick={() => onChange(opt)}
+          className={`rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors ${
+            value === opt
+              ? "border border-cyan-400/40 bg-cyan-400/20 text-cyan-300"
+              : "border border-white/5 bg-white/5 text-slate-400 hover:bg-white/10"
+          }`}
+        >
+          {opt}
+        </button>
+      ))}
     </div>
   );
 }

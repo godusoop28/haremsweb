@@ -3,26 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Character } from "@/lib/data";
-import type { PlanType } from "@/lib/api";
+import { canAccessLabel } from "@/lib/access";
 import { useAuth } from "@/lib/auth-context";
 import PremiumBadge from "./PremiumBadge";
 
-const accessRank: Record<Character["access"], number> = {
-  Gratis: 0,
-  Premium: 1,
-  "Premium / VIP": 2,
-};
-
-const planRank: Record<PlanType, number> = {
-  FREE: 0,
-  TRIAL_3_DAYS: 1,
-  PREMIUM: 1,
-  VIP: 2,
-};
-
 export default function CharacterCard({ character }: { character: Character }) {
   const { user } = useAuth();
-  const locked = planRank[user?.plan ?? "FREE"] < accessRank[character.access];
+  const locked = !canAccessLabel(user?.plan, character.access);
 
   return (
     <div className="glass group relative flex flex-col overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:border-cyan-400/30 hover:shadow-[0_0_40px_-12px_rgba(34,211,238,0.55)]">

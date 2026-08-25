@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { plans, TRIAL_PLAN_ENABLED } from "@/lib/data";
+import { api, type PlanType } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 const planCheckoutId: Record<string, string> = {
@@ -10,8 +12,29 @@ const planCheckoutId: Record<string, string> = {
   vip: "VIP",
 };
 
+function formatMxn(amount: number): string {
+  return amount === 0 ? "$0" : `$${amount} MXN`;
+}
+
 export default function PricingSection() {
   const { user } = useAuth();
+  // Precio en vivo desde el backend (misma fuente que usa el panel de admin para estimar
+  // ingresos) — evita que este componente y el backend se desincronicen con el tiempo. Si el
+  // fetch falla o todavía no llegó, se muestra el precio estático de lib/data.ts como fallback.
+  const [livePrices, setLivePrices] = useState<Partial<Record<PlanType, string>> | null>(null);
+
+  useEffect(() => {
+    api
+      .getPlans()
+      .then((remotePlans) => {
+        const map: Partial<Record<PlanType, string>> = {};
+        remotePlans.forEach((p) => {
+          map[p.plan] = formatMxn(p.priceMxn);
+        });
+        setLivePrices(map);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <section className="px-4 py-20 sm:px-6 lg:px-8">
@@ -52,7 +75,9 @@ export default function PricingSection() {
 
                 <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
                 <div className="mt-3 flex items-baseline gap-1">
-                  <span className="text-4xl font-extrabold text-white">{plan.price}</span>
+                  <span className="text-4xl font-extrabold text-white">
+                    {livePrices?.[userPlanKey as PlanType] ?? plan.price}
+                  </span>
                   <span className="text-sm text-slate-400">{plan.period}</span>
                 </div>
                 <p className="mt-3 text-sm text-slate-400">{plan.description}</p>

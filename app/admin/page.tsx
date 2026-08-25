@@ -4,6 +4,16 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { api, ApiError, type AdminDashboardResponse, type PlanType, type PaymentStatus } from "@/lib/api";
 
+// Simulación de planes para pruebas — solo visible acá (panel admin), nunca en el dashboard
+// del usuario normal. Cambia el plan de LA PROPIA cuenta admin logueada, para poder probar el
+// producto como Premium/VIP sin pasar por PayPal. Eliminar cuando ya no haga falta para QA.
+const devPlans: { plan: PlanType; label: string }[] = [
+  { plan: "FREE", label: "Activar FREE" },
+  { plan: "TRIAL_3_DAYS", label: "Activar TRIAL_3_DAYS" },
+  { plan: "PREMIUM", label: "Activar PREMIUM" },
+  { plan: "VIP", label: "Activar VIP" },
+];
+
 const planLabels: Record<PlanType, string> = {
   FREE: "Gratis",
   TRIAL_3_DAYS: "Pase 3 días",
@@ -39,9 +49,11 @@ function formatMxn(value: number): string {
 }
 
 export default function AdminOverviewPage() {
-  const { token } = useAuth();
+  const { token, user, refresh } = useAuth();
   const [data, setData] = useState<AdminDashboardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingPlan, setPendingPlan] = useState<PlanType | null>(null);
+  const [planFeedback, setPlanFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -50,6 +62,21 @@ export default function AdminOverviewPage() {
       .then(setData)
       .catch((err) => setError(err instanceof ApiError ? err.message : "No se pudo cargar el resumen."));
   }, [token]);
+
+  async function handleSimulatePlan(plan: PlanType) {
+    if (!token || pendingPlan) return;
+    setPendingPlan(plan);
+    setPlanFeedback(null);
+    try {
+      await api.simulateSubscription(token, plan);
+      await refresh();
+      setPlanFeedback(`Tu cuenta ahora tiene el plan ${plan}.`);
+    } catch (err) {
+      setPlanFeedback(err instanceof ApiError ? err.message : "No se pudo actualizar el plan.");
+    } finally {
+      setPendingPlan(null);
+    }
+  }
 
   if (error) return <p className="text-sm text-rose-400">{error}</p>;
   if (!data) return <p className="text-sm text-slate-400">Cargando…</p>;
@@ -126,6 +153,31 @@ export default function AdminOverviewPage() {
             </table>
           )}
         </div>
+      </div>
+
+      <div className="mt-8 glass rounded-2xl border border-amber-400/20 p-6">
+        <h2 className="text-lg font-semibold text-amber-300">Simular plan (QA)</h2>
+        <p className="mt-1 text-xs text-slate-400">
+          Cambia el plan de tu propia cuenta ({user?.email}) sin pasar por PayPal, para probar el
+          producto como Premium/VIP. No afecta a otros usuarios.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          {devPlans.map(({ plan, label }) => (
+            <button
+              key={plan}
+              onClick={() => handleSimulatePlan(plan)}
+              disabled={pendingPlan !== null}
+              className={`rounded-full border px-4 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                user?.plan === plan
+                  ? "border-cyan-400/40 bg-cyan-400/10 text-cyan-300"
+                  : "border-white/10 bg-white/5 text-slate-200 hover:border-cyan-400/30"
+              }`}
+            >
+              {pendingPlan === plan ? "Procesando..." : label}
+            </button>
+          ))}
+        </div>
+        {planFeedback && <p className="mt-3 text-xs text-slate-400">{planFeedback}</p>}
       </div>
     </div>
   );
