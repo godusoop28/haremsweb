@@ -64,12 +64,19 @@ export default function PricingSection() {
                 className={`relative flex flex-col rounded-2xl p-8 ${
                   plan.highlighted
                     ? "glass-strong glow-border scale-100 lg:scale-105"
-                    : "glass"
+                    : plan.id === "vip"
+                      ? "glass border-amber-300/20"
+                      : "glass"
                 }`}
               >
                 {plan.highlighted && (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-4 py-1 text-xs font-semibold text-white">
                     Más popular
+                  </span>
+                )}
+                {plan.id === "vip" && (
+                  <span className="absolute -top-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-amber-300/15 px-4 py-1 text-xs font-semibold text-amber-200 ring-1 ring-inset ring-amber-300/30">
+                    Exclusivo
                   </span>
                 )}
 
@@ -123,7 +130,11 @@ export default function PricingSection() {
                         : "border border-white/10 bg-white/5 text-slate-200"
                     }`}
                   >
-                    Pagar con PayPal
+                    {plan.id === "vip" && user.plan === "PREMIUM"
+                      ? "Subir a VIP"
+                      : user.plan === "FREE"
+                        ? `Elegir ${plan.name}`
+                        : "Pagar con PayPal"}
                   </Link>
                 ) : (
                   <Link
@@ -134,7 +145,7 @@ export default function PricingSection() {
                         : "border border-white/10 bg-white/5 text-slate-200"
                     }`}
                   >
-                    Elegir plan
+                    Crear cuenta
                   </Link>
                 )}
               </div>

@@ -220,14 +220,27 @@ export default function DashboardClient() {
             </h1>
             <p className="mt-2 text-sm text-slate-400">
               {user.email} · Plan <span className="font-medium text-cyan-300">{planLabels[user.plan]}</span>
+              {subscription?.expiresAt && user.plan !== "FREE" && (
+                <>
+                  {" "}
+                  · Activo hasta{" "}
+                  {new Date(subscription.expiresAt).toLocaleDateString("es-MX", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })}
+                </>
+              )}
             </p>
           </div>
-          <Link
-            href="/planes"
-            className="glow-button rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-6 py-3 text-center text-sm font-semibold text-white transition-transform hover:scale-105"
-          >
-            Mejorar plan
-          </Link>
+          {user.plan !== "VIP" && (
+            <Link
+              href="/planes"
+              className="glow-button rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-6 py-3 text-center text-sm font-semibold text-white transition-transform hover:scale-105"
+            >
+              {user.plan === "PREMIUM" ? "Subir a VIP" : "Gestionar plan"}
+            </Link>
+          )}
         </div>
 
         {/* 2. Continuar conversación */}

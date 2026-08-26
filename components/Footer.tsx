@@ -7,7 +7,11 @@ import BrandLogo from "@/components/BrandLogo";
 export default function Footer() {
   const pathname = usePathname();
 
-  if (pathname?.startsWith("/chat")) {
+  // La app privada (chat/dashboard/galería/admin) no necesita el footer largo de la landing —
+  // ver punto 82 del rediseño: solo las páginas públicas lo muestran.
+  const isPrivateApp =
+    pathname?.startsWith("/chat") || pathname?.startsWith("/dashboard") || pathname?.startsWith("/admin");
+  if (isPrivateApp) {
     return null;
   }
 
@@ -49,7 +53,7 @@ export default function Footer() {
             <ul className="mt-4 space-y-2 text-sm text-slate-400">
               <li>Solo para mayores de 18 años</li>
               <li>Plataforma privada y segura</li>
-              <li>Contenido simulado con fines demostrativos</li>
+              <li>Personajes ficticios, no personas reales</li>
             </ul>
           </div>
         </div>

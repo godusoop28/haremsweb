@@ -105,6 +105,9 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   const [imageLevel, setImageLevel] = useState<AdultLevel>("NUDE");
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
+  // ── Panel "Crear imagen" — colapsado por defecto, separado visualmente del chat normal ──────
+  const [showImagePanel, setShowImagePanel] = useState(false);
+
   // ── Personalización de la generación ────────────────────────────────────────
   const [showCustomize, setShowCustomize] = useState(false);
   const [sceneChoice, setSceneChoice] = useState<string>(AUTO);
@@ -551,9 +554,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
       {/* Desktop sidebar */}
       <aside className="scroll-neon hidden w-72 shrink-0 flex-col overflow-y-auto border-r border-white/5 bg-black/20 backdrop-blur-xl lg:flex">
         <div className="border-b border-white/5 px-5 py-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-300">
-            Personajes
-          </h2>
+          <h2 className="text-sm font-semibold text-white">Conversaciones</h2>
         </div>
         <div className="flex-1 space-y-1 p-2">
           {characters.map((c) => {
@@ -665,13 +666,25 @@ export default function ChatClient({ initialId }: { initialId: string }) {
               );
             }
 
+            // Agrupa mensajes consecutivos del mismo emisor: el avatar solo aparece en el
+            // primero del bloque, el resto se alinea con un espaciador del mismo ancho en vez
+            // de repetir la foto en cada burbuja (punto 30 del rediseño).
+            // Nota: un mensaje "system"/"levelup" previo ya tiene from !== message.from acá
+            // (message.from está acotado a "user"|"ai" por el return de arriba), así que no
+            // hace falta chequearlo aparte.
+            const previous = messages[idx - 1];
+            const isFirstInGroup = !previous || previous.from !== message.from;
+
             return (
               <div key={idx} className={`flex ${message.from === "user" ? "justify-end" : "justify-start"}`}>
-                {message.from === "ai" && (
-                  <Avatar name={character.name} image={character.image} size="sm" className="mr-2 mt-auto hidden sm:block" />
-                )}
+                {message.from === "ai" &&
+                  (isFirstInGroup ? (
+                    <Avatar name={character.name} image={character.image} size="sm" className="mr-2 mt-auto hidden sm:block" />
+                  ) : (
+                    <div className="mr-2 hidden w-10 shrink-0 sm:block" aria-hidden="true" />
+                  ))}
                 <div
-                  className={`max-w-[85%] whitespace-pre-wrap break-words rounded-2xl text-sm leading-relaxed shadow-lg sm:max-w-[60%] ${
+                  className={`max-w-[85%] whitespace-pre-wrap break-words rounded-2xl text-sm leading-relaxed shadow-lg sm:max-w-[65%] ${
                     message.imageUrl ? "overflow-hidden p-1.5" : "px-4 py-2.5"
                   } ${
                     message.from === "user"
@@ -690,7 +703,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
                         <GeneratedImage
                           src={message.imageUrl}
                           alt={`Imagen generada de ${character.name}`}
-                          className="w-full max-w-xs rounded-xl transition-opacity hover:opacity-90"
+                          className="w-full max-w-xs rounded-xl transition-opacity hover:opacity-90 sm:max-w-[420px]"
                         />
                       </button>
                       <div className="flex items-center justify-between gap-2 px-2 pb-1 pt-2">
@@ -731,9 +744,33 @@ export default function ChatClient({ initialId }: { initialId: string }) {
 
         {/* Composer */}
         <div className="glass-strong shrink-0 border-t border-white/5 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
-          {/* Área A+B+C: controles de generación de imagen, agrupados visualmente aparte del chat */}
-          {imageEnabled && (
+          {/* Área A+B+C: controles de generación de imagen, agrupados visualmente aparte del chat —
+              colapsado por defecto (punto 33): "Crear imagen" no compite con el chat normal hasta
+              que el usuario lo abre a propósito. */}
+          {imageEnabled && !showImagePanel && (
+            <button
+              onClick={() => setShowImagePanel(true)}
+              className="mb-2.5 flex items-center gap-1.5 rounded-full border border-cyan-400/15 bg-cyan-400/[0.04] px-3.5 py-1.5 text-xs font-semibold text-cyan-300 transition-colors hover:bg-cyan-400/10"
+            >
+              ✨ Crear imagen
+            </button>
+          )}
+          {imageEnabled && showImagePanel && (
             <div className="mb-2.5 rounded-xl border border-cyan-400/10 bg-cyan-400/[0.03] p-2.5">
+              <div className="flex items-center justify-between gap-2 pb-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-cyan-300/80">
+                  Crear imagen
+                </span>
+                <button
+                  onClick={() => setShowImagePanel(false)}
+                  aria-label="Cerrar panel de crear imagen"
+                  className="rounded-full p-1 text-slate-500 transition-colors hover:bg-white/5 hover:text-slate-300"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 {(["SAFE", "SENSUAL", "NUDE", "EXPLICIT"] as const).map((lvl) => {
                   if (lvl === "EXPLICIT" && user?.plan !== "VIP") return null;

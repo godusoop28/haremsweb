@@ -5,6 +5,14 @@
   --foreground: #e7ecf7;
   --neon: #38bdf8;
   --neon-strong: #22d3ee;
+
+  /* Sistema de superficies (rediseño 2026-08): 3 niveles claros en vez de "caja dentro de caja
+     con borde cyan" repetido en todos lados. El cyan queda reservado para CTA/selected/active/
+     focus — no para decorar cualquier tarjeta. Ver .surface / .surface-elevated abajo. */
+  --surface: rgba(255, 255, 255, 0.03);
+  --surface-elevated: rgba(255, 255, 255, 0.06);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.12);
 }
 
 @theme inline {
@@ -55,18 +63,22 @@ body {
   background: rgba(56, 189, 248, 0.4);
 }
 
+/* Superficie neutra elevada (nivel "surface") — border blanco tenue, no cyan. El cyan aparece
+   solo al hacer hover/focus en elementos interactivos (ver .hover\:border-cyan-400\/30 etc. en
+   componentes), nunca como borde permanente decorativo de una tarjeta. */
 .glass {
-  background: rgba(15, 23, 42, 0.55);
+  background: var(--surface-elevated);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(56, 189, 248, 0.12);
+  border: 1px solid var(--border-subtle);
 }
 
+/* Nivel "surfaceElevated" — más opaco, para paneles que necesitan más contraste (headers, modals). */
 .glass-strong {
-  background: rgba(8, 12, 24, 0.78);
+  background: rgba(8, 12, 24, 0.82);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(56, 189, 248, 0.18);
+  border: 1px solid var(--border-strong);
 }
 
 .text-gradient {

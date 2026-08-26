@@ -7,21 +7,25 @@ import { canAccessLabel } from "@/lib/access";
 import { useAuth } from "@/lib/auth-context";
 import PremiumBadge from "./PremiumBadge";
 
+const MAX_VISIBLE_TAGS = 3;
+
 export default function CharacterCard({ character }: { character: Character }) {
   const { user } = useAuth();
   const locked = !canAccessLabel(user?.plan, character.access);
+  const visibleTags = character.tags.slice(0, MAX_VISIBLE_TAGS);
+  const extraTagCount = character.tags.length - visibleTags.length;
 
   return (
-    <div className="glass group relative flex flex-col overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:border-cyan-400/30 hover:shadow-[0_0_40px_-12px_rgba(34,211,238,0.55)]">
-      <div className="relative aspect-[3/4] w-full overflow-hidden">
+    <div className="glass group flex flex-col overflow-hidden rounded-2xl transition-all duration-200 hover:-translate-y-0.5 hover:border-white/15">
+      <Link href={`/personajes/${character.id}`} className="relative block aspect-[3/4] w-full overflow-hidden">
         <Image
           src={character.image}
           alt={character.name}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-          className="object-cover object-[center_12%] transition-transform duration-500 group-hover:scale-105"
+          className="object-cover object-[center_12%] transition-transform duration-300 group-hover:scale-[1.015]"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#03050b] via-[#03050b]/15 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#03050b] via-[#03050b]/25 to-transparent" />
 
         <PremiumBadge
           access={character.access}
@@ -30,14 +34,8 @@ export default function CharacterCard({ character }: { character: Character }) {
         />
 
         {locked && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-            <svg
-              className="h-9 w-9 text-cyan-200"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
+          <div className="absolute right-3 top-11 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-slate-300 backdrop-blur-sm">
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -46,42 +44,50 @@ export default function CharacterCard({ character }: { character: Character }) {
             </svg>
           </div>
         )}
-      </div>
 
-      <div className="flex flex-1 flex-col p-5 text-center">
-        <h3 className="text-lg font-semibold text-white">{character.name}</h3>
-        <p className="mt-1 text-xs font-medium text-cyan-300">{character.archetype}</p>
-        <p className="mt-1 text-xs text-slate-400">
+        <div className="absolute inset-x-0 bottom-0 p-4">
+          <h3 className="text-base font-semibold text-white">{character.name}</h3>
+          <p className="mt-0.5 text-xs font-medium text-cyan-300">{character.archetype}</p>
+        </div>
+      </Link>
+
+      <div className="flex flex-1 flex-col gap-3 border-t border-white/5 p-4">
+        <p className="text-xs text-slate-500">
           {character.age} años · Dificultad: {character.difficulty}
         </p>
 
-        <div className="mt-4 flex flex-wrap justify-center gap-2">
-          {character.tags.map((tag) => (
+        <div className="flex flex-wrap gap-1.5">
+          {visibleTags.map((tag) => (
             <span
               key={tag}
-              className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-300"
+              className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] text-slate-300"
             >
               {tag}
             </span>
           ))}
+          {extraTagCount > 0 && (
+            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] text-slate-500">
+              +{extraTagCount}
+            </span>
+          )}
         </div>
 
-        <div className="mt-5 flex flex-col gap-2">
+        <div className="mt-auto grid grid-cols-2 gap-2 pt-1">
           <Link
             href={`/personajes/${character.id}`}
-            className="w-full rounded-full border border-cyan-400/30 bg-white/5 px-4 py-2.5 text-sm font-semibold text-cyan-200 transition-transform hover:scale-105"
+            className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-center text-xs font-semibold text-slate-200 transition-colors hover:border-white/20"
           >
             Ver perfil
           </Link>
           <Link
             href={locked ? "/planes" : `/chat?personaje=${character.id}`}
-            className={`w-full rounded-full px-4 py-2.5 text-sm font-semibold transition-transform hover:scale-105 ${
+            className={`rounded-full px-3 py-2 text-center text-xs font-semibold transition-transform hover:scale-[1.03] ${
               locked
                 ? "border border-cyan-400/30 bg-white/5 text-cyan-200"
                 : "glow-button bg-gradient-to-r from-cyan-400 to-blue-600 text-white"
             }`}
           >
-            {locked ? "Desbloquear y chatear" : "Chatear"}
+            {locked ? "Desbloquear" : "Chatear"}
           </Link>
         </div>
       </div>

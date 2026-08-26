@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import CharacterCard from "@/components/CharacterCard";
+import CharacterBrowser from "@/components/CharacterBrowser";
 import { getMergedCharacters } from "@/lib/characters";
 
 export const metadata: Metadata = {
@@ -25,11 +25,7 @@ export default async function PersonajesPage() {
           </p>
         </div>
 
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {characters.map((character) => (
-            <CharacterCard key={character.id} character={character} />
-          ))}
-        </div>
+        <CharacterBrowser characters={characters} />
       </div>
     </section>
   );

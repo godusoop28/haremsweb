@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { characters } from "@/lib/data";
 import GeneratedImage from "@/components/GeneratedImage";
+import EmptyState from "@/components/EmptyState";
+import ErrorState from "@/components/ErrorState";
+import { SkeletonCardGrid } from "@/components/Skeleton";
 import { api, ApiError, type ImageGalleryItemResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
@@ -94,83 +97,64 @@ export default function ImagesClient() {
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white sm:text-4xl">
+            <Link
+              href="/dashboard"
+              className="text-xs font-medium text-slate-500 transition-colors hover:text-cyan-300"
+            >
+              Cuenta
+            </Link>
+            <span className="mx-1.5 text-xs text-slate-600">/</span>
+            <span className="text-xs font-medium text-slate-400">Mis imágenes</span>
+            <h1 className="mt-2 text-3xl font-bold text-white sm:text-4xl">
               Mis <span className="text-gradient">imágenes</span>
             </h1>
             <p className="mt-2 text-sm text-slate-400">
-              Todas las fotos que has generado con tus personajes.
+              Todo lo que has creado con tus personajes.
             </p>
           </div>
-          <Link
-            href="/dashboard"
-            className="text-sm text-cyan-300 underline underline-offset-2 hover:text-cyan-200"
-          >
-            ← Volver al panel
-          </Link>
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setCharacterFilter("")}
-            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-              characterFilter === ""
-                ? "border-cyan-400/40 bg-cyan-400/10 text-cyan-300"
-                : "border-white/10 bg-white/5 text-slate-400 hover:border-cyan-400/20"
-            }`}
-          >
-            Todas
-          </button>
-          {characters.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setCharacterFilter(c.id)}
-              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                characterFilter === c.id
-                  ? "border-cyan-400/40 bg-cyan-400/10 text-cyan-300"
-                  : "border-white/10 bg-white/5 text-slate-400 hover:border-cyan-400/20"
-              }`}
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-xs text-slate-400">
+            Personaje
+            <select
+              value={characterFilter}
+              onChange={(e) => setCharacterFilter(e.target.value)}
+              className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 focus:border-cyan-400/40 focus:outline-none"
             >
-              {c.name}
-            </button>
-          ))}
+              <option value="">Todos los personajes</option>
+              {characters.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         {error && (
-          <div className="mt-6 flex items-center justify-between gap-3 rounded-xl border border-rose-400/20 bg-rose-400/5 px-4 py-3 text-sm text-rose-300">
-            <span>{error}</span>
-            <button
-              onClick={() => loadPage(0, characterFilter, true)}
-              className="shrink-0 rounded-full border border-rose-400/30 px-3 py-1 text-xs font-medium hover:bg-rose-400/10"
-            >
-              Reintentar
-            </button>
-          </div>
+          <ErrorState className="mt-6" message={error} onRetry={() => loadPage(0, characterFilter, true)} />
         )}
 
-        {loading && images.length === 0 && (
-          <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="aspect-[3/4] animate-pulse rounded-2xl bg-white/5" />
-            ))}
-          </div>
-        )}
+        {loading && images.length === 0 && <SkeletonCardGrid className="mt-8" count={10} />}
 
         {!loading && completed.length === 0 && (
-          <div className="mt-10 glass rounded-2xl p-10 text-center">
-            <p className="text-sm text-slate-400">
-              Todavía no tienes imágenes generadas
-              {characterFilter ? " con este personaje" : ""}.
-            </p>
-            <Link
-              href="/chat"
-              className="mt-4 inline-block rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-2 text-sm font-semibold text-white transition-transform hover:scale-105"
-            >
-              Generar mi primera foto
-            </Link>
-          </div>
+          <EmptyState
+            className="mt-10"
+            title="Todavía no tienes imágenes"
+            description={`No hay fotos generadas${characterFilter ? " con este personaje" : ""} todavía.`}
+            action={
+              <Link
+                href="/chat"
+                className="inline-block rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-2 text-sm font-semibold text-white transition-transform hover:scale-105"
+              >
+                Generar mi primera foto
+              </Link>
+            }
+          />
         )}
 
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {completed.map((img) => (
             <button
               key={img.id}

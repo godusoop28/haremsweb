@@ -72,6 +72,12 @@ function AuthCardInner({
     }
   }
 
+  const benefits = [
+    "16 personalidades IA con conexión progresiva",
+    "Conversaciones privadas, disponibles día y noche",
+    "Imágenes personalizadas en los planes Premium y VIP",
+  ];
+
   return (
     <section className="relative flex min-h-[calc(100vh-65px)] items-center justify-center overflow-hidden px-4 py-16 sm:px-6">
       <div className="absolute inset-0 -z-10">
@@ -79,16 +85,39 @@ function AuthCardInner({
         <div className="absolute right-0 bottom-0 h-72 w-72 rounded-full bg-cyan-400/15 blur-[100px]" />
       </div>
 
-      <div className="glass-strong glow-border w-full max-w-md rounded-2xl p-8">
-        <div className="text-center">
+      <div className="flex w-full max-w-4xl items-stretch gap-8">
+        {/* Panel de marca/beneficios — solo desktop, la tarjeta de formulario ya es autosuficiente en mobile. */}
+        <div className="hidden w-full max-w-sm flex-col justify-center lg:flex">
           <Link href="/" aria-label="HAREMS — inicio" className="inline-block">
-            <BrandLogo variant="vertical" size="md" priority />
+            <BrandLogo variant="horizontal" size="md" priority />
           </Link>
-          <h1 className="mt-4 text-2xl font-bold text-white">{title}</h1>
-          <p className="mt-2 text-sm text-slate-400">{subtitle}</p>
+          <p className="mt-6 text-2xl font-semibold leading-snug text-white">
+            Conversa. Conecta. <span className="text-gradient">Crea.</span>
+          </p>
+          <ul className="mt-8 space-y-4">
+            {benefits.map((b) => (
+              <li key={b} className="flex items-start gap-2.5 text-sm text-slate-400">
+                <svg className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                </svg>
+                {b}
+              </li>
+            ))}
+          </ul>
         </div>
 
-        <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+        <div className="glass-strong glow-border w-full max-w-md shrink-0 rounded-2xl p-8">
+          <div className="text-center lg:hidden">
+            <Link href="/" aria-label="HAREMS — inicio" className="inline-block">
+              <BrandLogo variant="vertical" size="md" priority />
+            </Link>
+          </div>
+          <div className="text-center">
+            <h1 className="mt-4 text-2xl font-bold text-white lg:mt-0">{title}</h1>
+            <p className="mt-2 text-sm text-slate-400">{subtitle}</p>
+          </div>
+
+          <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
           {showName && (
             <div>
               <label className="mb-1.5 block text-xs font-medium text-slate-400">
@@ -161,12 +190,13 @@ function AuthCardInner({
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-400">
-          {switchPrompt}{" "}
-          <Link href={switchHref} className="font-semibold text-cyan-300 hover:text-cyan-200">
-            {switchLabel}
-          </Link>
-        </p>
+          <p className="mt-6 text-center text-sm text-slate-400">
+            {switchPrompt}{" "}
+            <Link href={switchHref} className="font-semibold text-cyan-300 hover:text-cyan-200">
+              {switchLabel}
+            </Link>
+          </p>
+        </div>
       </div>
     </section>
   );
