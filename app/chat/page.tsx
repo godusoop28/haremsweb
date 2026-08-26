@@ -3,7 +3,7 @@ import ChatClient from "./ChatClient";
 import { characters } from "@/lib/data";
 
 export const metadata: Metadata = {
-  title: "Chat demo — HAREMS",
+  title: "Chat — HAREMS",
 };
 
 export default async function ChatPage({

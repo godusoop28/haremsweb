@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { characters } from "@/lib/data";
+import GeneratedImage from "@/components/GeneratedImage";
 import { api, ApiError, type ImageGalleryItemResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
@@ -177,8 +178,7 @@ export default function ImagesClient() {
               className="group relative overflow-hidden rounded-2xl border border-white/5 bg-slate-900/50 text-left transition-colors hover:border-cyan-400/30"
             >
               <div className="aspect-[3/4] w-full overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <GeneratedImage
                   src={img.imageUrl}
                   alt={`Imagen de ${img.characterName}`}
                   loading="lazy"
@@ -219,8 +219,7 @@ export default function ImagesClient() {
               </svg>
             </button>
             <div className="flex max-h-[90vh] max-w-2xl flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <GeneratedImage
                 src={lightbox.imageUrl}
                 alt={`Imagen de ${lightbox.characterName}`}
                 className="max-h-[75vh] rounded-2xl object-contain shadow-2xl"

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import AccountSettings from "@/components/AccountSettings";
+import GeneratedImage from "@/components/GeneratedImage";
 import { characters } from "@/lib/data";
 import { canAccessType } from "@/lib/access";
 import { useRemoteCharacters } from "@/lib/useCharacters";
@@ -296,8 +297,7 @@ export default function DashboardClient() {
                   href={`/chat?personaje=${img.characterSlug}`}
                   className="group aspect-[3/4] overflow-hidden rounded-xl border border-white/5 transition-colors hover:border-cyan-400/30"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <GeneratedImage
                     src={img.imageUrl}
                     alt={`Imagen de ${img.characterName}`}
                     loading="lazy"

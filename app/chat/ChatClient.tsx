@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Avatar from "@/components/Avatar";
+import GeneratedImage from "@/components/GeneratedImage";
 import LiveConnectionMeter from "@/components/LiveConnectionMeter";
 import PremiumBadge from "@/components/PremiumBadge";
 import UpgradeModal from "@/components/UpgradeModal";
@@ -88,6 +89,7 @@ const CUSTOM = "Personalizada";
 export default function ChatClient({ initialId }: { initialId: string }) {
   const { user, token, loading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const remoteCharacters = useRemoteCharacters();
 
   const initialCharacter = characters.find((c) => c.id === initialId) ?? characters[0];
@@ -130,6 +132,17 @@ export default function ChatClient({ initialId }: { initialId: string }) {
       router.replace(`/login?next=/chat?personaje=${initialId}`);
     }
   }, [authLoading, token, router, initialId]);
+
+  // ── Mantener selectedId sincronizado con ?personaje= (atrás/adelante del navegador) ────────
+  // selectCharacter ya actualiza la URL al hacer clic; esto cubre el otro sentido — si el usuario
+  // usa el botón "atrás", el query param cambia solo pero React nunca se enteraba.
+  useEffect(() => {
+    const param = searchParams.get("personaje");
+    if (param && param !== selectedId && characters.some((c) => c.id === param)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedId(param);
+    }
+  }, [searchParams, selectedId]);
 
   // ── Load subscription + conversations index ───────────────────────────────────
   useEffect(() => {
@@ -478,6 +491,10 @@ export default function ChatClient({ initialId }: { initialId: string }) {
       return;
     }
     setSelectedId(id);
+    // Bug real reportado: la URL se quedaba en el personaje anterior aunque el chat ya mostrara
+    // otro (selectCharacter solo tocaba el estado local). scroll:false porque es solo para que
+    // la URL sea compartible/recargable, no una navegación real de página.
+    router.replace(`/chat?personaje=${id}`, { scroll: false });
   }
 
   if (authLoading || !token) {
@@ -670,8 +687,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
                         onClick={() => setLightboxUrl(message.imageUrl!)}
                         className="block w-full"
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
+                        <GeneratedImage
                           src={message.imageUrl}
                           alt={`Imagen generada de ${character.name}`}
                           className="w-full max-w-xs rounded-xl transition-opacity hover:opacity-90"
@@ -879,8 +895,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
             </svg>
           </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <GeneratedImage
             src={lightboxUrl}
             alt="Imagen ampliada"
             onClick={(e) => e.stopPropagation()}

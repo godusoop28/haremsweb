@@ -17,9 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HAREMS — Chat con chicas IA personalizadas",
+  title: "HAREMS — Personajes IA y chat personalizado",
   description:
-    "Plataforma de chat con personajes de inteligencia artificial. Doce personalidades únicas, conversaciones privadas y planes premium.",
+    "Plataforma de chat con personajes de inteligencia artificial. 16 personalidades únicas, conexión progresiva, imágenes personalizadas y planes premium.",
   icons: {
     icon: [
       { url: "/2-removebg-preview.png", type: "image/png" },

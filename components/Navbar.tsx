@@ -6,17 +6,27 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import BrandLogo from "@/components/BrandLogo";
 
-const links = [
+const baseLinks = [
   { href: "/", label: "Inicio" },
   { href: "/personajes", label: "Personajes" },
-  { href: "/planes", label: "Planes" },
-  { href: "/chat", label: "Chat demo" },
 ];
+
+const authenticatedOnlyLinks = [
+  { href: "/chat", label: "Chat" },
+  { href: "/dashboard/imagenes", label: "Galería" },
+];
+
+const planesLink = { href: "/planes", label: "Planes" };
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const { user, logout, loading } = useAuth();
   const router = useRouter();
+
+  // Orden: Inicio, Personajes, [Chat, Galería solo logueado], Planes, [Cuenta aparte, ver abajo].
+  const links = user
+    ? [...baseLinks, ...authenticatedOnlyLinks, planesLink]
+    : [...baseLinks, planesLink];
 
   function handleLogout() {
     logout();
@@ -49,7 +59,7 @@ export default function Navbar() {
               href="/dashboard"
               className="text-sm font-medium text-slate-300 transition-colors hover:text-cyan-300"
             >
-              Mi cuenta
+              Cuenta
             </Link>
           )}
         </div>
@@ -125,7 +135,7 @@ export default function Navbar() {
                   onClick={() => setOpen(false)}
                   className="rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-cyan-300"
                 >
-                  Mi cuenta
+                  Cuenta
                 </Link>
                 <button
                   onClick={handleLogout}
