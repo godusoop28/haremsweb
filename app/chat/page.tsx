@@ -13,7 +13,8 @@ export default async function ChatPage({
 }) {
   const params = await searchParams;
   const requested = typeof params.personaje === "string" ? params.personaje : undefined;
-  const initialId = characters.find((c) => c.id === requested)?.id ?? characters[0].id;
+  const initialId =
+    characters.find((c) => c.id === requested && !c.comingSoon)?.id ?? characters[0].id;
 
   return <ChatClient initialId={initialId} />;
 }

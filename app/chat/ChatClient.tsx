@@ -109,7 +109,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   const [showImagePanel, setShowImagePanel] = useState(false);
 
   // ── Personalización de la generación ────────────────────────────────────────
-  const [showCustomize, setShowCustomize] = useState(false);
+  const [showCustomize] = useState(false);
   const [sceneChoice, setSceneChoice] = useState<string>(AUTO);
   const [customSceneText, setCustomSceneText] = useState("");
   const [poseChoice, setPoseChoice] = useState<string>(AUTO);
@@ -788,17 +788,6 @@ export default function ChatClient({ initialId }: { initialId: string }) {
                     </button>
                   );
                 })}
-
-                <button
-                  onClick={() => setShowCustomize((v) => !v)}
-                  className={`rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                    showCustomize
-                      ? "border border-cyan-400/40 bg-cyan-400/20 text-cyan-300"
-                      : "border border-white/5 bg-white/5 text-slate-400 hover:bg-white/10"
-                  }`}
-                >
-                  Personalizar {showCustomize ? "▲" : "▼"}
-                </button>
 
                 <button
                   disabled={imageButtonDisabled}

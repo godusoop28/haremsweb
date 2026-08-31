@@ -201,7 +201,8 @@ export default function DashboardClient() {
     );
   }
 
-  const availableCharacters = characters.filter((c) => {
+  const launchedCharacters = characters.filter((c) => !c.comingSoon);
+  const availableCharacters = launchedCharacters.filter((c) => {
     const remote = remoteCharacters.find((r) => r.slug === c.id);
     if (!remote) return !c.isPremium;
     return canAccessType(user.plan, remote.accessType);
@@ -372,7 +373,7 @@ export default function DashboardClient() {
 
           <StatCard
             label="Chicas disponibles"
-            value={`${availableCharacters.length} / ${characters.length}`}
+            value={`${availableCharacters.length} / ${launchedCharacters.length}`}
             accent="purple"
             icon={
               <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -445,7 +446,7 @@ export default function DashboardClient() {
                 href="/planes"
                 className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-cyan-400/30 p-3 text-sm font-medium text-cyan-300 transition-colors hover:bg-cyan-400/5"
               >
-                + {characters.length - availableCharacters.length} personajes más con Premium
+                + {launchedCharacters.length - availableCharacters.length} personajes más con Premium
               </Link>
             )}
           </div>

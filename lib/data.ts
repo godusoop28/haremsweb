@@ -22,6 +22,7 @@ export interface Character {
   visualDirection: string;
   tags: string[];
   isPremium: boolean;
+  comingSoon?: boolean;
   quote: string;
   greeting: string;
   chatTone: string;
@@ -545,6 +546,7 @@ export const characters: Character[] = [
       "Estética furry felina con lujo nocturno: cuero negro, plata, terrazas con vista a la ciudad, luces violeta de neón y ambiente cyber-luxury.",
     tags: ["Furry", "Gata", "Nocturna", "Dominante", "Neón", "Premium"],
     isPremium: true,
+    comingSoon: true,
     quote: "No persigo. Dejo que se acerquen los que realmente tienen algo que ofrecer.",
     greeting:
       "Vaya... no muchos se atreven a hablarme directo. Veamos si tienes algo que valga mi atención esta noche.",
@@ -582,6 +584,7 @@ export const characters: Character[] = [
       "Estética furry conejil tierna y elegante: satén crema, accesorios dorados, velas, rosas y luz cálida de lounge romántico.",
     tags: ["Furry", "Coneja", "Tierna", "Coqueta", "Romántica", "Premium"],
     isPremium: true,
+    comingSoon: true,
     quote: "Cuando me siento cómoda, se me olvida ser tímida.",
     greeting:
       "Hola... qué bueno que viniste. Me pongo un poco nerviosa al principio, pero se me pasa rápido contigo.",

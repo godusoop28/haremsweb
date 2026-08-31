@@ -67,6 +67,7 @@ export default function AuthenticatedHome({ user, token }: { user: UserResponse;
 
   const recommended = characters
     .filter((c) => {
+      if (c.comingSoon) return false;
       const remote = remoteCharacters.find((r) => r.slug === c.id);
       const accessible = remote ? canAccessType(user.plan, remote.accessType) : !c.isPremium;
       const alreadyChatting = conversations.some((conv) => conv.characterSlug === c.id);

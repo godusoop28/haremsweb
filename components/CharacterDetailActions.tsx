@@ -9,6 +9,16 @@ export default function CharacterDetailActions({ character }: { character: Chara
   const { user } = useAuth();
   const locked = !canAccessLabel(user?.plan, character.access);
 
+  if (character.comingSoon === true) {
+    return (
+      <div className="mt-8 flex flex-col gap-3 sm:w-fit sm:flex-row">
+        <span className="w-full cursor-not-allowed rounded-full border border-amber-300/30 bg-white/5 px-6 py-3 text-center text-sm font-semibold text-amber-200/80 sm:w-fit">
+          Muy pronto
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="mt-8 flex flex-col gap-3 sm:w-fit sm:flex-row">
       <Link
