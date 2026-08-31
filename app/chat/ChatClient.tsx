@@ -92,6 +92,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   const searchParams = useSearchParams();
   const remoteCharacters = useRemoteCharacters();
 
+  const visibleCharacters = characters.filter((c) => !c.comingSoon);
   const initialCharacter = characters.find((c) => c.id === initialId) ?? characters[0];
   const [selectedId, setSelectedId] = useState(initialCharacter.id);
   const [messagesByChar, setMessagesByChar] = useState<Record<string, Message[]>>({});
@@ -141,7 +142,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   // usa el botón "atrás", el query param cambia solo pero React nunca se enteraba.
   useEffect(() => {
     const param = searchParams.get("personaje");
-    if (param && param !== selectedId && characters.some((c) => c.id === param)) {
+    if (param && param !== selectedId && visibleCharacters.some((c) => c.id === param)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedId(param);
     }
@@ -524,7 +525,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
     <div className="chat-bg flex h-[calc(100dvh-65px)] flex-col overflow-hidden lg:mx-auto lg:max-w-7xl lg:flex-row">
       {/* Mobile / tablet character selector */}
       <div className="scroll-neon flex shrink-0 gap-2.5 overflow-x-auto border-b border-white/5 bg-black/20 px-3 py-2.5 backdrop-blur-xl lg:hidden">
-        {characters.map((c) => (
+        {visibleCharacters.map((c) => (
           <button
             key={c.id}
             onClick={() => selectCharacter(remoteCharacters.find((r) => r.slug === c.id), c.id)}
@@ -557,7 +558,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           <h2 className="text-sm font-semibold text-white">Conversaciones</h2>
         </div>
         <div className="flex-1 space-y-1 p-2">
-          {characters.map((c) => {
+          {visibleCharacters.map((c) => {
             const remoteC = remoteCharacters.find((r) => r.slug === c.id);
             const locked = remoteC ? !canAccessType(user?.plan, remoteC.accessType) : c.isPremium;
             return (
