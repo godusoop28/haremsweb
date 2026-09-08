@@ -50,6 +50,7 @@ interface UpgradeModalState {
   message: string;
   benefits?: string[];
   ctaLabel?: string;
+  ctaHref?: string;
 }
 
 const levelLabels: Record<AdultLevel, string> = {
@@ -364,13 +365,14 @@ export default function ChatClient({ initialId }: { initialId: string }) {
     if (imageUsage !== null && !hasImageQuota) {
       setUpgradeModal({
         title: "Sin imágenes disponibles",
-        message: `Ya usaste tus imágenes disponibles de ${periodWord(imageUsage.period)}. Puedes comprar créditos extra o esperar la renovación de tu límite.`,
+        message: `Ya usaste tus imágenes disponibles de ${periodWord(imageUsage.period)}. Compra créditos extra para seguir generando sin esperar la renovación.`,
         benefits: [
-          "VIP incluye 30 imágenes por semana",
-          "Nivel Explícita desbloqueado en VIP",
-          "Compra créditos extra sin esperar la renovación",
+          "1 crédito = 1 imagen adicional",
+          "No se reinician semanalmente",
+          "6 créditos por $59 MXN o 12 por $99 MXN",
         ],
-        ctaLabel: "Ver planes",
+        ctaLabel: "Comprar créditos extra",
+        ctaHref: "/creditos",
       });
       return;
     }
@@ -411,10 +413,12 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         return;
       }
       if (err instanceof ApiError && err.status === 403) {
+        const isVipLevel = err.message.toLowerCase().includes("vip");
         setUpgradeModal({
-          title: err.message.toLowerCase().includes("vip") ? "Nivel disponible en VIP" : "Sin imágenes disponibles",
+          title: isVipLevel ? "Nivel disponible en VIP" : "Sin imágenes disponibles",
           message: err.message,
-          ctaLabel: "Ver planes",
+          ctaLabel: isVipLevel ? "Ver planes" : "Comprar créditos extra",
+          ctaHref: isVipLevel ? "/planes" : "/creditos",
         });
         return;
       }
@@ -514,6 +518,9 @@ export default function ChatClient({ initialId }: { initialId: string }) {
     if (!characterSupportsImages) return "No disponible para este personaje";
     if (imageUsage !== null && !hasImageQuota) {
       return imageUsage.period === "DAILY" ? "Sin imágenes disponibles hoy" : "Sin imágenes disponibles esta semana";
+    }
+    if (imageUsage !== null && imagesRemainingInPeriod(imageUsage) === 0 && imageUsage.extraCredits > 0) {
+      return "Usarás 1 crédito extra para esta imagen.";
     }
     if (generatingImage) return "Generando imagen…";
     return "Generar imagen";
@@ -904,6 +911,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           message={upgradeModal.message}
           benefits={upgradeModal.benefits}
           ctaLabel={upgradeModal.ctaLabel}
+          ctaHref={upgradeModal.ctaHref}
           onClose={() => setUpgradeModal(null)}
         />
       )}

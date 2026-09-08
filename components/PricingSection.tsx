@@ -22,16 +22,22 @@ export default function PricingSection() {
   // ingresos) — evita que este componente y el backend se desincronicen con el tiempo. Si el
   // fetch falla o todavía no llegó, se muestra el precio estático de lib/data.ts como fallback.
   const [livePrices, setLivePrices] = useState<Partial<Record<PlanType, string>> | null>(null);
+  const [liveOriginalPrices, setLiveOriginalPrices] = useState<Partial<Record<PlanType, string>>>({});
 
   useEffect(() => {
     api
       .getPlans()
       .then((remotePlans) => {
         const map: Partial<Record<PlanType, string>> = {};
+        const originalMap: Partial<Record<PlanType, string>> = {};
         remotePlans.forEach((p) => {
           map[p.plan] = formatMxn(p.priceMxn);
+          if (p.originalPriceMxn != null) {
+            originalMap[p.plan] = formatMxn(p.originalPriceMxn);
+          }
         });
         setLivePrices(map);
+        setLiveOriginalPrices(originalMap);
       })
       .catch(() => {});
   }, []);
@@ -81,7 +87,17 @@ export default function PricingSection() {
                 )}
 
                 <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
-                <div className="mt-3 flex items-baseline gap-1">
+                {(liveOriginalPrices[userPlanKey as PlanType] ?? plan.originalPrice) && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <span className="text-sm text-slate-500 line-through">
+                      {liveOriginalPrices[userPlanKey as PlanType] ?? plan.originalPrice}
+                    </span>
+                    <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
+                      Oferta
+                    </span>
+                  </div>
+                )}
+                <div className={`flex items-baseline gap-1 ${(liveOriginalPrices[userPlanKey as PlanType] ?? plan.originalPrice) ? "mt-1" : "mt-3"}`}>
                   <span className="text-4xl font-extrabold text-white">
                     {livePrices?.[userPlanKey as PlanType] ?? plan.price}
                   </span>

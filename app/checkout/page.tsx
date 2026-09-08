@@ -13,13 +13,18 @@ const planIdByType: Record<string, string> = {
   TRIAL_3_DAYS: "trial",
 };
 
-const planMeta: Record<string, { name: string; price: string; period: string; features: string[] }> =
-  Object.fromEntries(
-    Object.entries(planIdByType).map(([planType, planId]) => {
-      const plan = plans.find((p) => p.id === planId)!;
-      return [planType, { name: plan.name, price: plan.price, period: plan.period, features: plan.features }];
-    })
-  );
+const planMeta: Record<
+  string,
+  { name: string; price: string; originalPrice?: string; period: string; features: string[] }
+> = Object.fromEntries(
+  Object.entries(planIdByType).map(([planType, planId]) => {
+    const plan = plans.find((p) => p.id === planId)!;
+    return [
+      planType,
+      { name: plan.name, price: plan.price, originalPrice: plan.originalPrice, period: plan.period, features: plan.features },
+    ];
+  })
+);
 
 function CheckoutContent() {
   const searchParams = useSearchParams();
@@ -104,7 +109,10 @@ function CheckoutContent() {
           <h1 className="mt-4 text-2xl font-bold text-white">
             Plan {meta.name}
           </h1>
-          <div className="mt-2 flex items-baseline justify-center gap-1">
+          {meta.originalPrice && (
+            <p className="mt-2 text-sm text-slate-500 line-through">{meta.originalPrice}</p>
+          )}
+          <div className="mt-1 flex items-baseline justify-center gap-1">
             <span className="text-4xl font-extrabold text-white">{meta.price}</span>
             <span className="text-sm text-slate-400">{meta.period}</span>
           </div>

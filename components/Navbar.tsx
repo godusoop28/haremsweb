@@ -19,6 +19,7 @@ const authenticatedLinks = [
   { href: "/chat", label: "Chat" },
   { href: "/dashboard/imagenes", label: "Galería" },
   { href: "/planes", label: "Planes" },
+  { href: "/creditos", label: "Créditos" },
 ];
 
 function isActive(pathname: string, href: string): boolean {

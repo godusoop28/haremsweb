@@ -187,6 +187,8 @@ export interface PlanInfoResponse {
   plan: PlanType;
   name: string;
   priceMxn: number;
+  /** Precio de lista anterior a la promo vigente, o null si el plan no tiene descuento. */
+  originalPriceMxn: number | null;
   imagesPerPeriod: number;
   imageLimitPeriod: ImageLimitPeriod;
   maxAdultLevel: AdultLevel | null;
@@ -249,6 +251,34 @@ export interface ExtraCreditPackage {
   id: string;
   credits: number;
   priceMxn: number;
+}
+
+export type CreditPurchaseStatus = "CREATED" | "APPROVED" | "COMPLETED" | "FAILED" | "CANCELLED";
+
+export interface CreditPurchaseResponse {
+  id: number;
+  packageId: string;
+  credits: number;
+  amount: number;
+  currency: string;
+  paypalOrderId: string;
+  status: CreditPurchaseStatus;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface CreditBalanceResponse {
+  imageCredits: number;
+}
+
+export interface CreateCreditOrderResponse {
+  provider: string;
+  packageId: string;
+  credits: number;
+  amountMxn: number;
+  paypalOrderId: string;
+  approvalUrl: string;
+  status: string;
 }
 
 export interface CreditTransactionResponse {
@@ -440,6 +470,33 @@ export const api = {
 
   getExtraCreditPackages(token: string) {
     return request<ExtraCreditPackage[]>("/credits/packages", { token });
+  },
+
+  getCreditBalance(token: string) {
+    return request<CreditBalanceResponse>("/credits/balance", { token });
+  },
+
+  getCreditPurchases(token: string, page = 0, size = 10) {
+    return request<PageResponse<CreditPurchaseResponse>>(
+      `/credits/purchases?page=${page}&size=${size}`,
+      { token }
+    );
+  },
+
+  createCreditOrder(token: string, packageId: string) {
+    return request<CreateCreditOrderResponse>("/payments/paypal/create-credit-order", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ packageId }),
+    });
+  },
+
+  captureCreditOrder(token: string, orderId: string) {
+    return request<CreditPurchaseResponse>("/payments/paypal/capture-credit-order", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ orderId }),
+    });
   },
 
   generateImage(

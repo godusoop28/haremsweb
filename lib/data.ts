@@ -645,6 +645,8 @@ export interface Plan {
   id: string;
   name: string;
   price: string;
+  /** Precio de lista anterior a la promo vigente (ej. "$149 MXN"), o undefined si no hay descuento. */
+  originalPrice?: string;
   period: string;
   description: string;
   features: string[];
@@ -686,7 +688,8 @@ export const plans: Plan[] = [
   {
     id: "premium",
     name: "Premium",
-    price: "$149 MXN",
+    price: "$129 MXN",
+    originalPrice: "$149 MXN",
     period: "/ mes",
     description: "Acceso mensual Premium a HAREMS con personajes premium.",
     features: [
@@ -694,13 +697,15 @@ export const plans: Plan[] = [
       "Chat ilimitado sin restricciones",
       "15 imágenes por semana",
       "Imágenes Normal, Sensual y Sin ropa",
+      "Compra de créditos extra disponible",
     ],
     highlighted: true,
   },
   {
     id: "vip",
     name: "VIP",
-    price: "$299 MXN",
+    price: "$249 MXN",
+    originalPrice: "$299 MXN",
     period: "/ mes",
     description: "Lo máximo. Incluye Victoria Hale, nivel Explícita y más imágenes por semana.",
     features: [
@@ -708,12 +713,13 @@ export const plans: Plan[] = [
       "Victoria Hale desbloqueada",
       "30 imágenes por semana",
       "Nivel Explícita desbloqueado",
+      "Compra de créditos extra disponible",
     ],
     highlighted: false,
   },
 ];
 
-/** Paquetes de créditos extra sugeridos (Parte 4). Deben coincidir con ExtraCreditPackage.java del backend. */
+/** Paquetes de créditos extra (pago único vía PayPal). Deben coincidir con ExtraCreditPackage.java del backend. */
 export interface ExtraCreditPackageInfo {
   id: string;
   credits: number;
@@ -721,10 +727,8 @@ export interface ExtraCreditPackageInfo {
 }
 
 export const extraCreditPackages: ExtraCreditPackageInfo[] = [
-  { id: "extra_40", credits: 40, priceMxn: 59 },
-  { id: "extra_100", credits: 100, priceMxn: 129 },
-  { id: "extra_250", credits: 250, priceMxn: 279 },
-  { id: "extra_500", credits: 500, priceMxn: 499 },
+  { id: "extra_6", credits: 6, priceMxn: 59 },
+  { id: "extra_12", credits: 12, priceMxn: 99 },
 ];
 
 export interface ChatHistoryItem {

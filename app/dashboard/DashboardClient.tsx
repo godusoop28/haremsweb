@@ -73,6 +73,7 @@ function friendlyReason(reason: string): string {
     PLAN_DOWNGRADE_TO_FREE: "Downgrade a Free",
   };
   if (map[reason]) return map[reason];
+  if (reason.startsWith("EXTRA_CREDIT_PURCHASE:")) return "Compra de créditos extra";
   if (reason.startsWith("IMAGE_GENERATION_EXTRA_CREDIT:")) return "Imagen generada (crédito extra)";
   if (reason.startsWith("IMAGE_GENERATION:")) return "Imagen generada";
   if (reason.startsWith("IMAGE_BLOCKED_BY_PROVIDER:")) return "Imagen bloqueada (reembolso)";
@@ -409,6 +410,14 @@ export default function DashboardClient() {
               <p className="mt-1 text-xs font-medium text-cyan-400">
                 +{subscription.imageCredits} créditos extra
               </p>
+            )}
+            {user.plan !== "FREE" && (
+              <Link
+                href="/creditos"
+                className="mt-2 inline-block text-xs text-cyan-300 underline underline-offset-2 hover:text-cyan-200"
+              >
+                Comprar créditos extra →
+              </Link>
             )}
           </StatCard>
 
