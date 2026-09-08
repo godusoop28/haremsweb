@@ -77,7 +77,7 @@ export default function CreditosClient() {
           {extraCreditPackages.map((pkg) => (
             <div key={pkg.id} className="glass rounded-2xl p-8 text-center">
               <p className="text-4xl font-extrabold text-white">{pkg.credits}</p>
-              <p className="mt-1 text-sm text-slate-400">créditos extra</p>
+              <p className="mt-1 text-sm text-slate-400">imágenes extra</p>
               <p className="mt-4 text-2xl font-bold text-cyan-300">${pkg.priceMxn} MXN</p>
               <button
                 onClick={() => handleBuy(pkg.id)}
@@ -90,7 +90,7 @@ export default function CreditosClient() {
                     Redirigiendo…
                   </span>
                 ) : (
-                  `Comprar ${pkg.credits} créditos`
+                  `Comprar ${pkg.credits} imágenes`
                 )}
               </button>
             </div>

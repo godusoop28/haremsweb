@@ -369,7 +369,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         benefits: [
           "1 crédito = 1 imagen adicional",
           "No se reinician semanalmente",
-          "6 créditos por $59 MXN o 12 por $99 MXN",
+          "10 imágenes por $59 MXN o 20 por $99 MXN",
         ],
         ctaLabel: "Comprar créditos extra",
         ctaHref: "/creditos",

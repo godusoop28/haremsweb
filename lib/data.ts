@@ -727,8 +727,8 @@ export interface ExtraCreditPackageInfo {
 }
 
 export const extraCreditPackages: ExtraCreditPackageInfo[] = [
-  { id: "extra_6", credits: 6, priceMxn: 59 },
-  { id: "extra_12", credits: 12, priceMxn: 99 },
+  { id: "extra_10", credits: 10, priceMxn: 59 },
+  { id: "extra_20", credits: 20, priceMxn: 99 },
 ];
 
 export interface ChatHistoryItem {
