@@ -16,10 +16,41 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SEO_TITLE = "HAREMS — Chicas IA y chat con inteligencia artificial";
+const SEO_DESCRIPTION =
+  "Conoce chicas IA y personajes de inteligencia artificial en HAREMS. Chatea con personalidades únicas, crea conexiones y genera imágenes personalizadas.";
+
 export const metadata: Metadata = {
-  title: "HAREMS — Personajes IA y chat personalizado",
-  description:
-    "Plataforma de chat con personajes de inteligencia artificial. 16 personalidades únicas, conexión progresiva, imágenes personalizadas y planes premium.",
+  title: SEO_TITLE,
+  description: SEO_DESCRIPTION,
+  keywords: [
+    "chicas IA",
+    "chicas de inteligencia artificial",
+    "chat con IA",
+    "personajes IA",
+    "HAREMS",
+  ],
+  openGraph: {
+    title: SEO_TITLE,
+    description: SEO_DESCRIPTION,
+    siteName: "HAREMS",
+    type: "website",
+    locale: "es_MX",
+    images: [
+      {
+        url: "/brand/harems/web/logo-card-800x800.png",
+        width: 800,
+        height: 800,
+        alt: "HAREMS — Chicas IA y chat con inteligencia artificial",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SEO_TITLE,
+    description: SEO_DESCRIPTION,
+    images: ["/brand/harems/web/logo-card-800x800.png"],
+  },
   icons: {
     icon: [
       { url: "/2-removebg-preview.png", type: "image/png" },
