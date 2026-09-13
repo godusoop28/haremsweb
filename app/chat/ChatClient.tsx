@@ -55,9 +55,7 @@ interface UpgradeModalState {
 
 const levelLabels: Record<AdultLevel, string> = {
   SAFE: "Normal",
-  SENSUAL: "Sensual",
   NUDE: "Sin ropa",
-  EXPLICIT: "Explícita",
 };
 
 const SCENE_PRESETS: { label: string; value: string }[] = [
@@ -345,9 +343,8 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         message: "Genera fotos de tus personajes favoritas cada semana.",
         benefits: [
           "15 imágenes por semana",
-          "Niveles Normal, Sensual y Sin ropa",
+          "Niveles Normal y Sin ropa",
           "Historial de imágenes guardado",
-          "Nivel Explícita disponible en VIP",
         ],
         ctaLabel: "Desbloquear Premium",
       });
@@ -477,7 +474,6 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           message: "Desbloquea el plan VIP para acceder al personaje más difícil e intenso del catálogo.",
           benefits: [
             `Chat privado con ${characterName}`,
-            "Generación de imágenes nivel Explícita",
             "30 imágenes por semana",
             "Acceso a todos los personajes Premium",
           ],
@@ -491,7 +487,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
             `Chat ilimitado con ${characterName}`,
             "16 personajes desbloqueados",
             "15 imágenes por semana",
-            "Imágenes Normal, Sensual y Sin ropa",
+            "Imágenes Normal y Sin ropa",
           ],
           ctaLabel: "Desbloquear Premium",
         });
@@ -780,22 +776,19 @@ export default function ChatClient({ initialId }: { initialId: string }) {
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
-                {(["SAFE", "SENSUAL", "NUDE", "EXPLICIT"] as const).map((lvl) => {
-                  if (lvl === "EXPLICIT" && user?.plan !== "VIP") return null;
-                  return (
-                    <button
-                      key={lvl}
-                      onClick={() => setImageLevel(lvl)}
-                      className={`rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                        imageLevel === lvl
-                          ? "border border-cyan-400/40 bg-cyan-400/20 text-cyan-300"
-                          : "border border-white/5 bg-white/5 text-slate-400 hover:bg-white/10"
-                      }`}
-                    >
-                      {levelLabels[lvl]}
-                    </button>
-                  );
-                })}
+                {(["SAFE", "NUDE"] as const).map((lvl) => (
+                  <button
+                    key={lvl}
+                    onClick={() => setImageLevel(lvl)}
+                    className={`rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                      imageLevel === lvl
+                        ? "border border-cyan-400/40 bg-cyan-400/20 text-cyan-300"
+                        : "border border-white/5 bg-white/5 text-slate-400 hover:bg-white/10"
+                    }`}
+                  >
+                    {levelLabels[lvl]}
+                  </button>
+                ))}
 
                 <button
                   disabled={imageButtonDisabled}

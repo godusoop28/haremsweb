@@ -74,7 +74,7 @@ export type SubscriptionStatus =
 export type AccessType = "FREE" | "PREMIUM" | "VIP";
 export type SenderType = "USER" | "AI";
 export type MessageType = "TEXT" | "IMAGE" | "SYSTEM";
-export type AdultLevel = "SAFE" | "SENSUAL" | "NUDE" | "EXPLICIT";
+export type AdultLevel = "SAFE" | "NUDE";
 export type RelationshipStatus = "DESCONOCIDA" | "CURIOSA" | "INTERESADA" | "CONFIADA" | "CONEXION_ESPECIAL";
 
 export const relationshipStatusLabels: Record<RelationshipStatus, string> = {
@@ -507,7 +507,7 @@ export const api = {
       style?: string;
       mood?: string;
       aspectRatio?: string;
-      adultLevel?: "SAFE" | "SENSUAL" | "NUDE" | "EXPLICIT";
+      adultLevel?: "SAFE" | "NUDE";
       scene?: string;
       pose?: string;
     }
