@@ -102,7 +102,9 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   const [isTyping, setIsTyping] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [imageUsage, setImageUsage] = useState<ImageUsageState | null>(null);
-  const [imageLevel, setImageLevel] = useState<AdultLevel>("NUDE");
+  // La opción segura debe ser siempre el estado inicial. NUDE solo se envía después de una
+  // selección explícita del usuario; abrir el panel nunca puede predisponer una generación adulta.
+  const [imageLevel, setImageLevel] = useState<AdultLevel>("SAFE");
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   // ── Panel "Crear imagen" — colapsado por defecto, separado visualmente del chat normal ──────
@@ -381,7 +383,6 @@ export default function ChatClient({ initialId }: { initialId: string }) {
       const response = await api.generateImage(token, {
         characterSlug: selectedId,
         aspectRatio,
-        style: "premium-realistic-anime",
         adultLevel: levelUsed,
         scene: resolveScene(),
         pose: resolvePose(),
