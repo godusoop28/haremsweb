@@ -92,11 +92,16 @@ export interface UserResponse {
   role: Role;
   plan: PlanType;
   ageVerified: boolean;
+  emailVerified: boolean;
 }
 
 export interface AuthResponse {
   token: string;
   user: UserResponse;
+}
+
+export interface SimpleMessageResponse {
+  message: string;
 }
 
 export interface CharacterResponse {
@@ -247,10 +252,16 @@ export type CreditProvider =
   | "OPENROUTER"
   | "SYSTEM";
 
-export interface ExtraCreditPackage {
+/**
+ * Precio final ya calculado por backend para el usuario autenticado — nunca se calcula el
+ * descuento VIP en el cliente (ver CreditPricingService en el backend).
+ */
+export interface PricedCreditPackage {
   id: string;
   credits: number;
-  priceMxn: number;
+  basePriceMxn: number;
+  finalPriceMxn: number;
+  vipDiscountApplied: boolean;
 }
 
 export type CreditPurchaseStatus = "CREATED" | "APPROVED" | "COMPLETED" | "FAILED" | "CANCELLED";
@@ -261,6 +272,7 @@ export interface CreditPurchaseResponse {
   credits: number;
   amount: number;
   currency: string;
+  vipDiscountApplied: boolean;
   paypalOrderId: string;
   status: CreditPurchaseStatus;
   createdAt: string;
@@ -275,7 +287,9 @@ export interface CreateCreditOrderResponse {
   provider: string;
   packageId: string;
   credits: number;
+  basePriceMxn: number;
   amountMxn: number;
+  vipDiscountApplied: boolean;
   paypalOrderId: string;
   approvalUrl: string;
   status: string;
@@ -402,6 +416,35 @@ export const api = {
     return request<UserResponse>("/auth/me", { token });
   },
 
+  verifyEmail(token: string, code: string) {
+    return request<UserResponse>("/auth/verify-email", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ code }),
+    });
+  },
+
+  resendVerificationCode(token: string) {
+    return request<SimpleMessageResponse>("/auth/resend-verification", {
+      method: "POST",
+      token,
+    });
+  },
+
+  forgotPassword(email: string) {
+    return request<SimpleMessageResponse>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  resetPassword(data: { email: string; code: string; newPassword: string }) {
+    return request<SimpleMessageResponse>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
   getCharacters() {
     return request<CharacterResponse[]>("/characters");
   },
@@ -469,7 +512,7 @@ export const api = {
   },
 
   getExtraCreditPackages(token: string) {
-    return request<ExtraCreditPackage[]>("/credits/packages", { token });
+    return request<PricedCreditPackage[]>("/credits/packages", { token });
   },
 
   getCreditBalance(token: string) {

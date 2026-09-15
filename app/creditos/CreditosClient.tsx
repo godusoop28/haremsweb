@@ -3,14 +3,25 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, ApiError, type CreditBalanceResponse } from "@/lib/api";
+import { api, ApiError, type CreditBalanceResponse, type PricedCreditPackage } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { extraCreditPackages } from "@/lib/data";
+
+// Mientras carga el precio real desde backend, se muestra el precio de lista sin descuento (nunca
+// se asume VIP en el cliente) — evita pantalla en blanco, mismo patrón que PricingSection.tsx.
+const fallbackPackages: PricedCreditPackage[] = extraCreditPackages.map((pkg) => ({
+  id: pkg.id,
+  credits: pkg.credits,
+  basePriceMxn: pkg.priceMxn,
+  finalPriceMxn: pkg.priceMxn,
+  vipDiscountApplied: false,
+}));
 
 export default function CreditosClient() {
   const { user, token, loading: authLoading } = useAuth();
   const router = useRouter();
   const [balance, setBalance] = useState<CreditBalanceResponse | null>(null);
+  const [packages, setPackages] = useState<PricedCreditPackage[]>(fallbackPackages);
   const [pendingPackageId, setPendingPackageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,6 +34,8 @@ export default function CreditosClient() {
   useEffect(() => {
     if (!token) return;
     api.getCreditBalance(token).then(setBalance).catch(() => {});
+    // Precio real (con descuento VIP si aplica) calculado por backend — nunca en el cliente.
+    api.getExtraCreditPackages(token).then(setPackages).catch(() => {});
   }, [token]);
 
   async function handleBuy(packageId: string) {
@@ -74,11 +87,26 @@ export default function CreditosClient() {
         )}
 
         <div className="mx-auto mt-10 grid max-w-2xl gap-6 sm:grid-cols-2">
-          {extraCreditPackages.map((pkg) => (
+          {packages.map((pkg) => (
             <div key={pkg.id} className="glass rounded-2xl p-8 text-center">
               <p className="text-4xl font-extrabold text-white">{pkg.credits}</p>
               <p className="mt-1 text-sm text-slate-400">imágenes extra</p>
-              <p className="mt-4 text-2xl font-bold text-cyan-300">${pkg.priceMxn} MXN</p>
+
+              {pkg.vipDiscountApplied ? (
+                <>
+                  <div className="mt-4 flex items-center justify-center gap-2">
+                    <span className="text-sm text-slate-500 line-through">${pkg.basePriceMxn} MXN</span>
+                    <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
+                      Oferta
+                    </span>
+                  </div>
+                  <p className="mt-1 text-2xl font-bold text-cyan-300">${pkg.finalPriceMxn} MXN</p>
+                  <p className="mt-1 text-xs font-medium text-amber-300">10% de descuento VIP</p>
+                </>
+              ) : (
+                <p className="mt-4 text-2xl font-bold text-cyan-300">${pkg.finalPriceMxn} MXN</p>
+              )}
+
               <button
                 onClick={() => handleBuy(pkg.id)}
                 disabled={pendingPackageId !== null}
