@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import AccountSettings from "@/components/AccountSettings";
+import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 import GeneratedImage from "@/components/GeneratedImage";
 import { characters } from "@/lib/data";
 import { canAccessType } from "@/lib/access";
@@ -214,6 +215,8 @@ export default function DashboardClient() {
   return (
     <section className="px-4 py-16 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
+        <EmailVerificationBanner />
+
         {/* 1. Saludo + plan */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>

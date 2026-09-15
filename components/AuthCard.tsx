@@ -46,6 +46,7 @@ function AuthCardInner({
   const [ageVerified, setAgeVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const passwordResetSuccess = mode === "login" && searchParams.get("reset") === "success";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -58,13 +59,19 @@ function AuthCardInner({
 
     setSubmitting(true);
     try {
+      const next = searchParams.get("next");
+      const fallback = next && next.startsWith("/") ? next : "/dashboard";
+
       if (mode === "register") {
-        await register({ name, email, password, ageVerified });
+        const registeredUser = await register({ name, email, password, ageVerified });
+        // Modo "suave": el usuario ya queda logueado (register() ya guardó el token). Si su
+        // correo no quedó verificado, lo llevamos a la pantalla de verificación como siguiente
+        // paso natural, pero no lo bloqueamos — puede navegar a otro lado libremente.
+        router.push(registeredUser.emailVerified ? fallback : "/verificar-correo");
       } else {
         await login(email, password);
+        router.push(fallback);
       }
-      const next = searchParams.get("next");
-      router.push(next && next.startsWith("/") ? next : "/dashboard");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Ocurrió un error inesperado. Inténtalo más tarde.");
     } finally {
@@ -118,6 +125,11 @@ function AuthCardInner({
           </div>
 
           <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+          {passwordResetSuccess && (
+            <p className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-4 py-2.5 text-xs text-emerald-300">
+              Tu contraseña se actualizó correctamente. Inicia sesión con tu nueva contraseña.
+            </p>
+          )}
           {showName && (
             <div>
               <label className="mb-1.5 block text-xs font-medium text-slate-400">
@@ -149,9 +161,16 @@ function AuthCardInner({
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-400">
-              Contraseña
-            </label>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="block text-xs font-medium text-slate-400">
+                Contraseña
+              </label>
+              {mode === "login" && (
+                <Link href="/olvide-password" className="text-xs font-medium text-cyan-300 hover:text-cyan-200">
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              )}
+            </div>
             <input
               type="password"
               placeholder="••••••••"

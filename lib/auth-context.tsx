@@ -13,7 +13,7 @@ interface AuthContextValue {
     email: string;
     password: string;
     ageVerified: boolean;
-  }) => Promise<void>;
+  }) => Promise<UserResponse>;
   logout: () => void;
   refresh: () => Promise<void>;
 }
@@ -58,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.localStorage.setItem(TOKEN_KEY, res.token);
       setToken(res.token);
       setUser(res.user);
+      return res.user;
     },
     []
   );
