@@ -210,7 +210,8 @@ export interface PayPalSubscriptionResponse {
   plan: PlanType;
   paypalPlanId: string;
   paypalSubscriptionId: string;
-  approvalUrl: string;
+  /** Null si PayPal aplicó el cambio sin necesitar re-aprobación (solo pasa en revise-subscription). */
+  approvalUrl: string | null;
   status: string;
 }
 
@@ -510,6 +511,27 @@ export const api = {
     return request<void>("/payments/paypal/cancel-subscription", {
       method: "POST",
       token,
+    });
+  },
+
+  /**
+   * Cambia de plan (p.ej. PREMIUM→VIP) sobre la suscripción de PayPal existente en vez de crear
+   * una nueva — evita que el usuario termine pagando dos suscripciones a la vez. approvalUrl
+   * puede venir null si PayPal aplicó el cambio sin pedir re-aprobación (ya queda activo).
+   */
+  revisePayPalSubscription(token: string, plan: PlanType) {
+    return request<PayPalSubscriptionResponse>("/payments/paypal/revise-subscription", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ plan }),
+    });
+  },
+
+  confirmPayPalRevise(token: string, subscriptionId: string, newPlan: PlanType) {
+    return request<SubscriptionResponse>("/payments/paypal/confirm-revise", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ subscriptionId, newPlan }),
     });
   },
 

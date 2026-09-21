@@ -3,8 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { plans, TRIAL_PLAN_ENABLED } from "@/lib/data";
-import { api, type PlanType } from "@/lib/api";
+import { api, ApiError, type PlanType } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+
+/** Planes pagados entre los que se puede cambiar sin crear una suscripción nueva (ver revisePayPalSubscription). */
+const PAID_PLANS: PlanType[] = ["PREMIUM", "VIP"];
 
 const planCheckoutId: Record<string, string> = {
   trial: "TRIAL_3_DAYS",
@@ -17,12 +20,36 @@ function formatMxn(amount: number): string {
 }
 
 export default function PricingSection() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   // Precio en vivo desde el backend (misma fuente que usa el panel de admin para estimar
   // ingresos) — evita que este componente y el backend se desincronicen con el tiempo. Si el
   // fetch falla o todavía no llegó, se muestra el precio estático de lib/data.ts como fallback.
   const [livePrices, setLivePrices] = useState<Partial<Record<PlanType, string>> | null>(null);
   const [liveOriginalPrices, setLiveOriginalPrices] = useState<Partial<Record<PlanType, string>>>({});
+  // Cambio de plan entre pagados (PREMIUM<->VIP) — usa revise sobre la suscripción existente en
+  // vez de /checkout, que crearía una segunda suscripción de PayPal en paralelo y cobraría doble.
+  const [revisingPlan, setRevisingPlan] = useState<PlanType | null>(null);
+  const [reviseError, setReviseError] = useState<string | null>(null);
+
+  async function handleRevise(newPlan: PlanType) {
+    if (!token) return;
+    setReviseError(null);
+    setRevisingPlan(newPlan);
+    try {
+      const response = await api.revisePayPalSubscription(token, newPlan);
+      if (response.approvalUrl) {
+        // eslint-disable-next-line react-hooks/immutability -- redirect de navegador estándar, no estado de React
+        window.location.href = response.approvalUrl;
+        return;
+      }
+      // Se aplicó sin necesitar re-aprobación — ya quedó activo, solo recargar para reflejarlo.
+      // eslint-disable-next-line react-hooks/immutability -- redirect de navegador estándar, no estado de React
+      window.location.href = "/dashboard";
+    } catch (err) {
+      setReviseError(err instanceof ApiError ? err.message : "No se pudo cambiar de plan. Intenta de nuevo.");
+      setRevisingPlan(null);
+    }
+  }
 
   useEffect(() => {
     api
@@ -61,8 +88,12 @@ export default function PricingSection() {
             const isFreePlan = plan.id === "free";
             const isTrialPlan = plan.id === "trial";
             const isTrialDisabled = isTrialPlan && !TRIAL_PLAN_ENABLED;
-            const userPlanKey = isTrialPlan ? "TRIAL_3_DAYS" : plan.id.toUpperCase();
+            const userPlanKey = isTrialPlan ? "TRIAL_3_DAYS" : (plan.id.toUpperCase() as PlanType);
             const currentPlanActive = user?.plan === userPlanKey;
+            // Ya tiene un plan pagado activo y quiere otro plan pagado (PREMIUM<->VIP) — cambia
+            // la suscripción existente (revise) en vez de crear una nueva y pagar doble.
+            const canRevise =
+              !!user && !currentPlanActive && PAID_PLANS.includes(user.plan) && PAID_PLANS.includes(userPlanKey as PlanType);
 
             return (
               <div
@@ -137,6 +168,27 @@ export default function PricingSection() {
                   <div className="mt-8 w-full rounded-full border border-emerald-400/30 bg-emerald-400/10 px-5 py-3 text-center text-sm font-semibold text-emerald-300">
                     Plan actual
                   </div>
+                ) : canRevise ? (
+                  <>
+                    <button
+                      onClick={() => handleRevise(userPlanKey as PlanType)}
+                      disabled={revisingPlan !== null}
+                      className={`mt-8 w-full rounded-full px-5 py-3 text-center text-sm font-semibold transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 ${
+                        plan.highlighted
+                          ? "glow-button bg-gradient-to-r from-cyan-400 to-blue-600 text-white"
+                          : "border border-white/10 bg-white/5 text-slate-200"
+                      }`}
+                    >
+                      {revisingPlan === userPlanKey
+                        ? "Redirigiendo a PayPal…"
+                        : plan.id === "vip"
+                          ? "Subir a VIP"
+                          : "Bajar a Premium"}
+                    </button>
+                    {reviseError && revisingPlan === null && (
+                      <p className="mt-2 text-center text-xs text-red-400">{reviseError}</p>
+                    )}
+                  </>
                 ) : user ? (
                   <Link
                     href={`/checkout?plan=${checkoutPlan}`}
@@ -146,11 +198,7 @@ export default function PricingSection() {
                         : "border border-white/10 bg-white/5 text-slate-200"
                     }`}
                   >
-                    {plan.id === "vip" && user.plan === "PREMIUM"
-                      ? "Subir a VIP"
-                      : user.plan === "FREE"
-                        ? `Elegir ${plan.name}`
-                        : "Pagar con PayPal"}
+                    {user.plan === "FREE" ? `Elegir ${plan.name}` : "Pagar con PayPal"}
                   </Link>
                 ) : (
                   <Link

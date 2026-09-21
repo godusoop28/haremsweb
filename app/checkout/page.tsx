@@ -84,6 +84,11 @@ function CheckoutContent() {
     setError(null);
     try {
       const response = await api.createPayPalSubscription(token, plan);
+      if (!response.approvalUrl) {
+        setError("PayPal no devolvió un link de aprobación. Intenta de nuevo.");
+        setLoading(false);
+        return;
+      }
       window.location.href = response.approvalUrl;
     } catch (err) {
       if (err instanceof ApiError) {

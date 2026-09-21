@@ -25,6 +25,12 @@ export default function SuccessClient() {
     searchParams.get("token") ||
     null;
 
+  // Cuando esta página se abre como retorno de un cambio de plan (revise-subscription en vez de
+  // create-subscription) — ver PricingSection.handleRevise / PayPalService.buildReviseRequest —
+  // hay que confirmar contra el endpoint de revise, no el de creación normal.
+  const isRevise = searchParams.get("mode") === "revise";
+  const revisedPlan = searchParams.get("newPlan") as PlanType | null;
+
   const [state, setState] = useState<State>("confirming");
   const [activePlan, setActivePlan] = useState<PlanType | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -40,7 +46,11 @@ export default function SuccessClient() {
       if (subscriptionId && !confirmedRef.current) {
         confirmedRef.current = true;
         try {
-          await api.confirmPayPalSubscription(token!, subscriptionId);
+          if (isRevise && revisedPlan) {
+            await api.confirmPayPalRevise(token!, subscriptionId, revisedPlan);
+          } else {
+            await api.confirmPayPalSubscription(token!, subscriptionId);
+          }
         } catch (err) {
           if (err instanceof ApiError) {
             if (err.status === 401 || err.status === 403) {
@@ -82,7 +92,7 @@ export default function SuccessClient() {
 
     confirmAndPoll();
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [token, subscriptionId, router]);
+  }, [token, subscriptionId, router, isRevise, revisedPlan]);
 
   if (state === "error") {
     return (
