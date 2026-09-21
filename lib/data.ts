@@ -664,7 +664,7 @@ export const plans: Plan[] = [
     description: "Para conocer la plataforma y empezar a chatear.",
     features: [
       "Luna Valmont y Hana Mori desbloqueadas",
-      "20 mensajes gratuitos por personaje",
+      "5 mensajes gratuitos por personaje",
       "Sin generación de imágenes",
       "Sin tarjeta de crédito requerida",
     ],
