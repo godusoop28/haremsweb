@@ -298,17 +298,37 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         return;
       }
       if (err instanceof ApiError && err.status === 403) {
-        setUpgradeModal({
-          title: "Límite gratuito alcanzado",
-          message: err.message,
-          benefits: [
-            "Chat ilimitado con todas las chicas",
-            "16 personajes desbloqueadas",
-            "Generación de imágenes incluida",
-            "Cancela cuando quieras",
-          ],
-          ctaLabel: "Continuar con Premium",
-        });
+        // FREE tiene su propio tope gratis por personaje; PREMIUM/VIP tienen un tope mensual de
+        // cuenta distinto (ver AccessControlService) — el mismo 403, pero el CTA correcto cambia
+        // según el plan: a FREE le ofrecemos Premium, a Premium subir a VIP, a VIP (tope) ya no
+        // hay a qué subir.
+        if (user?.plan === "VIP") {
+          setUpgradeModal({
+            title: "Límite mensual alcanzado",
+            message: err.message,
+            ctaLabel: "Ver mi cuenta",
+            ctaHref: "/dashboard",
+          });
+        } else if (user?.plan === "PREMIUM") {
+          setUpgradeModal({
+            title: "Límite mensual alcanzado",
+            message: err.message,
+            benefits: ["2000 mensajes al mes (vs. 980 en Premium)", "Imágenes explícitas incluidas"],
+            ctaLabel: "Mejorar a VIP",
+          });
+        } else {
+          setUpgradeModal({
+            title: "Límite gratuito alcanzado",
+            message: err.message,
+            benefits: [
+              "Chat ilimitado con todas las chicas",
+              "16 personajes desbloqueadas",
+              "Generación de imágenes incluida",
+              "Cancela cuando quieras",
+            ],
+            ctaLabel: "Continuar con Premium",
+          });
+        }
         return;
       }
       if (err instanceof ApiError && err.status === 429) {

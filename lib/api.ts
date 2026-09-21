@@ -179,6 +179,9 @@ export interface SubscriptionResponse {
   /** Créditos extra (wallet independiente del plan, comprado aparte). */
   imageCredits: number;
   messagesUsed: number;
+  /** Tope de mensajes por periodo (cuenta completa) — null si el plan no tiene tope (FREE/TRIAL). */
+  messagesLimitPerPeriod: number | null;
+  messagePeriodResetAt: string | null;
   imagesUsedThisPeriod: number;
   imagesLimitPerPeriod: number;
   imageLimitPeriod: ImageLimitPeriod;
