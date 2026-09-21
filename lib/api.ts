@@ -129,6 +129,8 @@ export interface MessageResponse {
   messageType: MessageType;
   imageUrl: string | null;
   imageGenerationId: number | null;
+  /** Cuándo deja de servir imageUrl (no hay storage propio — ver GeneratedImage). Null en mensajes anteriores a este campo. */
+  expiresAt: string | null;
   createdAt: string;
 }
 
@@ -222,6 +224,8 @@ export interface ImageGenerationResponse {
   connectionLevel: number;
   relationshipStatus: RelationshipStatus;
   connectionLeveledUp: boolean;
+  /** Cuándo deja de servir imageUrl (no hay storage propio — ver GeneratedImage). */
+  expiresAt: string | null;
 }
 
 export interface ImageGalleryItemResponse {
@@ -233,6 +237,8 @@ export interface ImageGalleryItemResponse {
   adultLevel: AdultLevel | null;
   status: string;
   usedExtraCredit: boolean;
+  /** Cuándo deja de servir imageUrl (no hay storage propio — ver GeneratedImage). Null en filas anteriores a este campo. */
+  expiresAt: string | null;
   createdAt: string;
 }
 

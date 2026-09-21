@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { characters } from "@/lib/data";
-import GeneratedImage from "@/components/GeneratedImage";
+import GeneratedImage, { daysUntilExpiration } from "@/components/GeneratedImage";
+import { downloadImage } from "@/lib/downloadImage";
 import EmptyState from "@/components/EmptyState";
 import ErrorState from "@/components/ErrorState";
 import { SkeletonCardGrid } from "@/components/Skeleton";
@@ -166,6 +167,7 @@ export default function ImagesClient() {
                   src={img.imageUrl}
                   alt={`Imagen de ${img.characterName}`}
                   loading="lazy"
+                  expiresAt={img.expiresAt}
                   className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
               </div>
@@ -206,9 +208,10 @@ export default function ImagesClient() {
               <GeneratedImage
                 src={lightbox.imageUrl}
                 alt={`Imagen de ${lightbox.characterName}`}
+                expiresAt={lightbox.expiresAt}
                 className="max-h-[75vh] rounded-2xl object-contain shadow-2xl"
               />
-              <div className="flex items-center gap-3 text-sm text-slate-300">
+              <div className="flex flex-wrap items-center justify-center gap-3 text-sm text-slate-300">
                 <span className="font-medium text-white">{lightbox.characterName}</span>
                 <span className="text-slate-500">·</span>
                 <span>{formatDate(lightbox.createdAt)}</span>
@@ -221,6 +224,18 @@ export default function ImagesClient() {
                     {levelLabels[lightbox.adultLevel] ?? lightbox.adultLevel}
                   </span>
                 )}
+                {(() => {
+                  const daysLeft = daysUntilExpiration(lightbox.expiresAt);
+                  if (daysLeft === null || daysLeft < 0) return null;
+                  return (
+                    <button
+                      onClick={() => downloadImage(lightbox.imageUrl, `harems-${lightbox.characterSlug}-${lightbox.id}.webp`)}
+                      className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-[11px] font-medium text-cyan-300 hover:bg-cyan-400/20"
+                    >
+                      Descargar{daysLeft <= 3 ? ` (expira en ${daysLeft}d)` : ""}
+                    </button>
+                  );
+                })()}
               </div>
               <Link
                 href={`/chat?personaje=${lightbox.characterSlug}`}

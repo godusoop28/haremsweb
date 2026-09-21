@@ -319,6 +319,7 @@ export default function DashboardClient() {
                     src={img.imageUrl}
                     alt={`Imagen de ${img.characterName}`}
                     loading="lazy"
+                    expiresAt={img.expiresAt}
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                 </Link>

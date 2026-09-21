@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import Avatar from "@/components/Avatar";
-import GeneratedImage from "@/components/GeneratedImage";
+import GeneratedImage, { daysUntilExpiration } from "@/components/GeneratedImage";
+import { downloadImage } from "@/lib/downloadImage";
 import LiveConnectionMeter from "@/components/LiveConnectionMeter";
 import PremiumBadge from "@/components/PremiumBadge";
 import UpgradeModal from "@/components/UpgradeModal";
@@ -41,6 +42,8 @@ interface Message {
   from: "user" | "ai" | "system" | "levelup";
   text: string;
   imageUrl?: string;
+  /** Cuándo deja de servir imageUrl — ver GeneratedImage. */
+  expiresAt?: string | null;
   adultLevel?: AdultLevel;
   createdAt?: string;
 }
@@ -105,7 +108,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   // La opción segura debe ser siempre el estado inicial. NUDE solo se envía después de una
   // selección explícita del usuario; abrir el panel nunca puede predisponer una generación adulta.
   const [imageLevel, setImageLevel] = useState<AdultLevel>("SAFE");
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ url: string; expiresAt?: string | null } | null>(null);
 
   // ── Panel "Crear imagen" — colapsado por defecto, separado visualmente del chat normal ──────
   const [showImagePanel, setShowImagePanel] = useState(false);
@@ -203,6 +206,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           from: m.sender === "USER" ? "user" : "ai",
           text: m.content,
           imageUrl: m.messageType === "IMAGE" && m.imageUrl ? m.imageUrl : undefined,
+          expiresAt: m.expiresAt,
           createdAt: m.createdAt,
         }));
         setMessagesByChar((prev) => ({
@@ -399,6 +403,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         from: "ai",
         text: response.usedExtraCredit ? "Aquí tienes (usó 1 crédito extra)." : "Aquí tienes.",
         imageUrl: response.imageUrl,
+        expiresAt: response.expiresAt,
         adultLevel: levelUsed,
       });
       refreshRelationship(selectedId);
@@ -702,12 +707,13 @@ export default function ChatClient({ initialId }: { initialId: string }) {
                   {message.imageUrl ? (
                     <>
                       <button
-                        onClick={() => setLightboxUrl(message.imageUrl!)}
+                        onClick={() => setLightbox({ url: message.imageUrl!, expiresAt: message.expiresAt })}
                         className="block w-full"
                       >
                         <GeneratedImage
                           src={message.imageUrl}
                           alt={`Imagen generada de ${character.name}`}
+                          expiresAt={message.expiresAt}
                           className="w-full max-w-xs rounded-xl transition-opacity hover:opacity-90 sm:max-w-[420px]"
                         />
                       </button>
@@ -717,6 +723,22 @@ export default function ChatClient({ initialId }: { initialId: string }) {
                             {levelLabels[message.adultLevel]}
                           </span>
                         )}
+                        {(() => {
+                          const daysLeft = daysUntilExpiration(message.expiresAt);
+                          if (daysLeft === null || daysLeft < 0) return null;
+                          return (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                downloadImage(message.imageUrl!, `harems-${character.id}-${Date.now()}.webp`);
+                              }}
+                              className="flex items-center gap-1 text-[10px] font-medium text-cyan-400 underline underline-offset-2 hover:text-cyan-300"
+                              title={daysLeft <= 3 ? `Expira en ${daysLeft} día${daysLeft === 1 ? "" : "s"} — descárgala` : "Descargar"}
+                            >
+                              Descargar{daysLeft <= 3 ? ` (expira en ${daysLeft}d)` : ""}
+                            </button>
+                          );
+                        })()}
                         {message.createdAt && (
                           <span className="ml-auto text-[10px] text-slate-500">
                             {new Date(message.createdAt).toLocaleTimeString("es-MX", {
@@ -910,13 +932,13 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         />
       )}
 
-      {lightboxUrl && (
+      {lightbox && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
-          onClick={() => setLightboxUrl(null)}
+          onClick={() => setLightbox(null)}
         >
           <button
-            onClick={() => setLightboxUrl(null)}
+            onClick={() => setLightbox(null)}
             className="absolute right-4 top-4 rounded-full border border-white/10 bg-white/5 p-2 text-white hover:bg-white/10"
             aria-label="Cerrar"
           >
@@ -924,9 +946,28 @@ export default function ChatClient({ initialId }: { initialId: string }) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
             </svg>
           </button>
+          {(() => {
+            const daysLeft = daysUntilExpiration(lightbox.expiresAt);
+            if (daysLeft === null || daysLeft < 0) return null;
+            return (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  downloadImage(lightbox.url, `harems-${character.id}-${Date.now()}.webp`);
+                }}
+                className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white hover:bg-white/10"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                Descargar{daysLeft <= 3 ? ` (expira en ${daysLeft}d)` : ""}
+              </button>
+            );
+          })()}
           <GeneratedImage
-            src={lightboxUrl}
+            src={lightbox.url}
             alt="Imagen ampliada"
+            expiresAt={lightbox.expiresAt}
             onClick={(e) => e.stopPropagation()}
             className="max-h-[90vh] max-w-full rounded-2xl object-contain shadow-2xl"
           />
