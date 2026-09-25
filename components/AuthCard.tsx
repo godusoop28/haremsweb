@@ -183,15 +183,28 @@ function AuthCardInner({
           </div>
 
           {showName && (
-            <label className="flex items-start gap-2 text-xs text-slate-400">
-              <input
-                type="checkbox"
-                checked={ageVerified}
-                onChange={(e) => setAgeVerified(e.target.checked)}
-                className="mt-0.5 accent-cyan-400"
-              />
-              Confirmo que soy mayor de edad y acepto los términos de uso.
-            </label>
+            <div
+              className={`rounded-xl border px-4 py-3 transition-colors ${
+                ageVerified ? "border-emerald-400/30 bg-emerald-400/5" : "border-amber-300/30 bg-amber-300/5"
+              }`}
+            >
+              <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                <span className="flex h-6 w-9 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 text-[11px] font-bold text-white">
+                  18+
+                </span>
+                Verificación de edad
+              </div>
+              <label className="mt-2.5 flex cursor-pointer items-start gap-3 text-sm text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={ageVerified}
+                  onChange={(e) => setAgeVerified(e.target.checked)}
+                  required
+                  className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-cyan-400"
+                />
+                Confirmo que tengo 18 años o más y acepto los términos de uso.
+              </label>
+            </div>
           )}
 
           {error && (
@@ -202,7 +215,7 @@ function AuthCardInner({
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || (mode === "register" && !ageVerified)}
             className="glow-button w-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-3 text-sm font-semibold text-white transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? "Procesando..." : submitLabel}

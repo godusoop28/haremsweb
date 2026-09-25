@@ -321,7 +321,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
             title: "Límite gratuito alcanzado",
             message: err.message,
             benefits: [
-              "Chat ilimitado con todas las chicas",
+              "980 mensajes al mes con todas las chicas",
               "16 personajes desbloqueadas",
               "Generación de imágenes incluida",
               "Cancela cuando quieras",
@@ -510,7 +510,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           title: `${characterName} es Premium`,
           message: "Desbloquea Premium para chatear con ella y generar imágenes exclusivas.",
           benefits: [
-            `Chat ilimitado con ${characterName}`,
+            `Chat con ${characterName} (980 mensajes al mes)`,
             "16 personajes desbloqueados",
             "15 imágenes por semana",
             "Imágenes Normal y Sin ropa",

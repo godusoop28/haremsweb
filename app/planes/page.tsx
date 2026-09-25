@@ -17,7 +17,7 @@ export default function PlanesPage() {
         </h1>
         <p className="mt-4 text-slate-400">
           Empieza gratis con Luna y Hana. Sube a Premium para desbloquear las 16 chicas,
-          imágenes y chat ilimitado.
+          imágenes y hasta 2000 mensajes al mes.
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-sm text-slate-400">
           <span className="flex items-center gap-1.5">
