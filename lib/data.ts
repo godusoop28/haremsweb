@@ -669,9 +669,9 @@ export const plans: Plan[] = [
     period: "siempre",
     description: "Conoce a cada chica antes de pagar.",
     features: [
-      `${FREE_MESSAGES_PER_CHARACTER} mensajes gratis con cada chica`,
+      `${FREE_MESSAGES_PER_CHARACTER} mensajes gratis con cada chica (excepto Victoria, VIP)`,
       "La misma IA y personalidad que en los planes de pago",
-      "Sin generación de imágenes",
+      "Sin fotos (disponibles en planes de pago)",
       "Sin tarjeta de crédito",
     ],
     highlighted: false,

@@ -163,6 +163,8 @@ export interface FreeMessageStatus {
   freeTrialApplies: boolean;
   canSendMessage: boolean;
   authenticated: boolean;
+  /** "VIP" si el personaje no entra en la prueba gratuita (Victoria) y exige ese plan; null en el resto. */
+  requiredPlan: "VIP" | null;
 }
 
 /** Códigos de negocio que el backend manda en `code` y que el frontend interpreta. */

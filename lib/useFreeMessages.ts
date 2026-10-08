@@ -56,9 +56,17 @@ export function useFreeMessages() {
   return { statuses, update };
 }
 
-/** Texto corto para tarjetas/listados, o null si el plan da acceso completo a ese personaje. */
+/** ¿Puede chatear con este personaje usando la prueba gratuita ahora mismo? */
+export function isTrialAvailable(status: FreeMessageStatus | undefined): boolean {
+  return !!status && status.freeTrialApplies && status.remaining > 0;
+}
+
+/**
+ * Texto corto para tarjetas/listados, o null si el plan da acceso completo a ese personaje o si
+ * el personaje no entra en la prueba (exclusivas VIP como Victoria).
+ */
 export function freeTrialLabel(status: FreeMessageStatus | undefined): string | null {
-  if (!status || status.hasPaidAccess) return null;
+  if (!status || status.hasPaidAccess || status.requiredPlan) return null;
   if (status.remaining <= 0) return "Prueba finalizada";
   if (status.used === 0) return `${status.limit} mensajes gratis`;
   return status.remaining === 1 ? "1 mensaje restante" : `${status.remaining} mensajes restantes`;

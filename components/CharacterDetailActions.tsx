@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Character } from "@/lib/data";
 import { canAccessLabel } from "@/lib/access";
 import { useAuth } from "@/lib/auth-context";
-import { freeTrialLabel, useFreeMessages } from "@/lib/useFreeMessages";
+import { freeTrialLabel, isTrialAvailable, useFreeMessages } from "@/lib/useFreeMessages";
 
 export default function CharacterDetailActions({ character }: { character: Character }) {
   const { user } = useAuth();
@@ -12,7 +12,7 @@ export default function CharacterDetailActions({ character }: { character: Chara
   const locked = !canAccessLabel(user?.plan, character.access);
   const trialStatus = statuses[character.id];
   const trialLabel = freeTrialLabel(trialStatus);
-  const trialAvailable = !!trialStatus && !trialStatus.hasPaidAccess && trialStatus.remaining > 0;
+  const trialAvailable = isTrialAvailable(trialStatus);
   const canChat = !locked || trialAvailable;
 
   if (character.comingSoon === true) {

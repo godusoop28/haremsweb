@@ -8,7 +8,7 @@ import LiveConnectionMeter from "@/components/LiveConnectionMeter";
 import { characters } from "@/lib/data";
 import { canAccessType } from "@/lib/access";
 import { useRemoteCharacters } from "@/lib/useCharacters";
-import { useFreeMessages } from "@/lib/useFreeMessages";
+import { isTrialAvailable, useFreeMessages } from "@/lib/useFreeMessages";
 import {
   api,
   type ConversationResponse,
@@ -71,10 +71,8 @@ export default function AuthenticatedHome({ user, token }: { user: UserResponse;
     .filter((c) => {
       if (c.comingSoon) return false;
       const remote = remoteCharacters.find((r) => r.slug === c.id);
-      const trial = freeStatuses[c.id];
       const accessible =
-        (remote ? canAccessType(user.plan, remote.accessType) : !c.isPremium) ||
-        (!!trial && !trial.hasPaidAccess && trial.remaining > 0);
+        (remote ? canAccessType(user.plan, remote.accessType) : !c.isPremium) || isTrialAvailable(freeStatuses[c.id]);
       const alreadyChatting = conversations.some((conv) => conv.characterSlug === c.id);
       return accessible && !alreadyChatting;
     })

@@ -286,6 +286,8 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   const freeStatus = freeStatuses[selectedId];
   const freeTrialActive = freeStatus?.freeTrialApplies === true;
   const freeExhausted = freeTrialActive && freeStatus.remaining <= 0;
+  // Exclusiva VIP (Victoria) sin plan VIP: no entra en la prueba gratuita.
+  const vipLocked = freeStatus?.requiredPlan === "VIP";
   const firstName = character.name.split(" ")[0];
 
   // ── Image generation capability ──────────────────────────────────────────────
@@ -305,7 +307,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   // ── Send chat message ────────────────────────────────────────────────────────
   async function sendMessage() {
     const trimmed = input.trim();
-    if (!trimmed || !token || isTyping || freeExhausted || sendingRef.current) return;
+    if (!trimmed || !token || isTyping || freeExhausted || vipLocked || sendingRef.current) return;
     sendingRef.current = true;
 
     const charId = selectedId;
@@ -560,8 +562,22 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   }
 
   function selectCharacter(id: string) {
-    // Sin candado: quien no tiene un plan con acceso a este personaje lo prueba con sus mensajes
-    // gratis (el backend valida y cuenta). Si ya se agotaron, el chat muestra el CTA de planes.
+    // Quien no tiene un plan con acceso a este personaje lo prueba con sus mensajes gratis (el
+    // backend valida y cuenta; si se agotaron, el chat muestra el CTA). Las exclusivas VIP no
+    // entran en la prueba: se ofrece VIP como antes.
+    const remoteC = remoteCharacters.find((r) => r.slug === id);
+    const status = freeStatuses[id];
+    const needsVip = status ? status.requiredPlan === "VIP" : remoteC?.accessType === "VIP" && user?.plan !== "VIP";
+    if (needsVip) {
+      const characterName = characters.find((ch) => ch.id === id)?.name ?? "Este personaje";
+      setUpgradeModal({
+        title: `${characterName} es exclusiva VIP`,
+        message: "Desbloquea el plan VIP para acceder al personaje más difícil e intenso del catálogo.",
+        benefits: [`Chat privado con ${characterName}`, "30 imágenes por semana", "Acceso a todos los personajes Premium"],
+        ctaLabel: "Desbloquear VIP",
+      });
+      return;
+    }
     setSelectedId(id);
     // Bug real reportado: la URL se quedaba en el personaje anterior aunque el chat ya mostrara
     // otro (selectCharacter solo tocaba el estado local). scroll:false porque es solo para que
@@ -950,12 +966,40 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           )}
 
           {/* Área D: chat normal — o, si la prueba gratuita con este personaje terminó, el CTA de planes. */}
-          {freeExhausted ? (
+          {vipLocked ? (
+            <div className="rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/[0.08] via-transparent to-blue-600/[0.08] p-4 text-center sm:p-5">
+              <p className="text-base font-semibold text-white">{firstName} es exclusiva VIP</p>
+              <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-slate-400">
+                Ella no forma parte de la prueba gratuita. Con el plan VIP puedes conversar con {firstName}.
+              </p>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+                <Link
+                  href="/planes"
+                  onClick={() =>
+                    trackEvent("plans_cta_clicked", {
+                      source: "vip_only_character",
+                      character_id: selectedId,
+                      character_name: character.name,
+                    })
+                  }
+                  className="glow-button rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-6 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-[1.03]"
+                >
+                  Ver plan VIP
+                </Link>
+                <Link
+                  href="/personajes"
+                  className="rounded-full border border-white/10 bg-white/5 px-6 py-2.5 text-sm font-semibold text-slate-200 transition-colors hover:border-white/20"
+                >
+                  Explorar otros personajes
+                </Link>
+              </div>
+            </div>
+          ) : freeExhausted ? (
             <div className="rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/[0.08] via-transparent to-blue-600/[0.08] p-4 text-center sm:p-5">
               <p className="text-base font-semibold text-white">Ya conociste a {firstName} ✨</p>
               <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-slate-400">
                 Usaste tus {freeStatus.limit} mensajes gratis con ella. Elige un plan para seguir
-                conversando con {firstName} y desbloquear a todas las chicas.
+                conversando con {firstName}, desbloquear a todas las chicas y pedirles fotos.
               </p>
               <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
                 <Link

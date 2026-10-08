@@ -13,8 +13,10 @@ El mismo archivo vive en `haremapi` (backend) y en `haremsweb` (frontend).
   chat paralelo ni respuestas prefabricadas.
 - El **backend es la fuente de verdad**: el frontend solo muestra el contador.
 - Antes del cambio el usuario FREE solo podía chatear con Luna y Hana (5 mensajes cada una) y el
-  resto de chicas estaba bloqueado. Ahora puede **probar a todas las chicas activas**, incluida
-  Victoria (VIP), con 10 mensajes cada una. Las imágenes siguen siendo solo para planes de pago.
+  resto de chicas estaba bloqueado. Ahora puede **probar a todas las chicas activas excepto
+  Victoria (VIP)**, con 10 mensajes cada una (decisión del cliente, 2026-10-08).
+- **Sin fotos en la prueba:** pedir fotos sigue siendo solo para planes de pago (el backend lo
+  rechaza con 403 aunque el usuario tenga mensajes gratis con esa chica).
 
 ## 2. Quién usa el contador (free vs pagado)
 
@@ -23,12 +25,15 @@ con el plan *efectivo* (`ProfileService.resolveEffectivePlan`, que baja a FREE u
 
 | Plan efectivo   | Personajes FREE / PREMIUM          | Personaje VIP (Victoria)          |
 |-----------------|------------------------------------|-----------------------------------|
-| FREE            | prueba gratis (10 por personaje)   | prueba gratis (10)                |
-| TRIAL_3_DAYS    | acceso completo (reglas del pase)  | prueba gratis (10)                |
-| PREMIUM         | acceso completo (tope 980/mes)     | prueba gratis (10)                |
+| FREE            | prueba gratis (10 por personaje)   | bloqueada — exige VIP             |
+| TRIAL_3_DAYS    | acceso completo (reglas del pase)  | bloqueada — exige VIP             |
+| PREMIUM         | acceso completo (tope 980/mes)     | bloqueada — exige VIP             |
 | VIP             | acceso completo (tope 2000/mes)    | acceso completo                   |
 | Rol ADMIN       | acceso completo                    | acceso completo                   |
 
+- Las exclusivas VIP no entran en la prueba (`AccessControlService.isIncludedInFreeTrial`): su
+  estado trae `requiredPlan: "VIP"`, `canSendMessage: false`, y `/chat/send` responde 403
+  `CHARACTER_ACCESS_DENIED` sin crear contador.
 - Con acceso completo se aplican exactamente las reglas que ya existían (tope mensual de cuenta de
   Premium/VIP). No cambió ningún precio ni nada de PayPal.
 - Si un plan vence, en la siguiente petición vuelve a aplicarse la prueba gratis con lo que quede
@@ -96,10 +101,12 @@ Público (`/characters/**` ya lo era). Con token devuelve el estado real; sin to
   "hasPaidAccess": false,
   "freeTrialApplies": true,
   "canSendMessage": true,
-  "authenticated": true
+  "authenticated": true,
+  "requiredPlan": null
 }
 ```
 
+Para Victoria sin plan VIP: `requiredPlan: "VIP"`, `limit/used/remaining: 0`, `canSendMessage: false`.
 404 si el personaje no existe o está inactivo ("Muy pronto").
 
 ### `GET /api/characters/free-message-status`
@@ -131,7 +138,7 @@ Se conservan todos los campos anteriores (`messagesUsed`/`messagesLimit` siguen 
 | Prueba agotada con ese personaje     | 403  | `FREE_MESSAGE_LIMIT_REACHED` (+ `freeUsage`) |
 | Tope mensual Premium/VIP alcanzado   | 403  | `MONTHLY_MESSAGE_LIMIT_REACHED` |
 | IA no respondió (mensaje de prueba)  | 503  | `AI_UNAVAILABLE`                |
-| Acceso denegado (imágenes)           | 403  | `CHARACTER_ACCESS_DENIED`       |
+| Exclusiva VIP sin plan VIP / fotos sin plan | 403  | `CHARACTER_ACCESS_DENIED` |
 | Rate limit (ya existía, 40/min)      | 429  | —                               |
 
 ## 5. Lógica del límite (backend)
@@ -186,7 +193,9 @@ configuración y crearla implicaba construir un sistema nuevo de settings persis
   con 3 o menos en ámbar + enlace "Ver planes" → "Último mensaje gratuito con Luna".
   Al llegar a 0 el input se reemplaza por una tarjeta "Ya conociste a Luna ✨" con
   **[Ver planes]** (`/planes`) y **[Explorar otros personajes]** (`/personajes`). Sin popups.
-  Se puede cambiar a otra chica que aún tenga mensajes. Si el backend rechaza un envío, el mensaje
+  Se puede cambiar a otra chica que aún tenga mensajes. Al elegir a Victoria sin VIP aparece el
+  aviso "Victoria es exclusiva VIP" con el CTA al plan VIP (si se abre por URL, el compositor
+  muestra ese mismo aviso). Si el backend rechaza un envío, el mensaje
   optimista se retira y el texto vuelve al input. Doble Enter/click protegido (candado + `clientMessageId`).
 - **Tarjetas / perfil** (`CharacterCard`, `CharacterDetailActions`): etiqueta "10 mensajes gratis",
   "6 mensajes restantes" o "Prueba finalizada"; botón "Probar gratis" en chicas fuera del plan.
@@ -195,7 +204,8 @@ configuración y crearla implicaba construir un sistema nuevo de settings persis
 - **Soporte**: "Soporte: noe@harems.site" en el footer (columna Legal) y en "Mi cuenta"
   (el área privada no muestra footer). Fuente única: `lib/contact.ts`.
 - **Copy**: plan Gratis, /planes, /personajes, registro, hero y sección de precios ahora hablan de
-  "10 mensajes gratis con cada chica" (antes "Luna y Hana" / "5 mensajes").
+  "10 mensajes gratis con cada chica" (antes "Luna y Hana" / "5 mensajes"), aclarando en planes y
+  personajes que Victoria es exclusiva VIP y que las fotos son de los planes de pago.
 
 ## 8. Analítica
 
@@ -237,7 +247,8 @@ Frontend (`haremsweb`):
 Automático (backend): `./mvnw test` — `FreeMessageTrialTest` (escenarios A–G, filas heredadas,
 cambio de límite) y `ChatServiceFreeTrialTest` (H: fallo de IA, doble envío, moderación, límite).
 
-Se verificó además de punta a punta contra Postgres local, con la API real (33/33 comprobaciones):
+Se verificó además de punta a punta contra Postgres local, con la API real (38/38 comprobaciones,
+incluidas Victoria bloqueada para FREE/Premium y fotos rechazadas para FREE):
 A (10→9), B (mensaje 11 → 403 y no queda en historial), C (Luna 0, Hana 10, Kiara usable),
 D/E/F (Premium, VIP, Pase 3 días), G (plan vencido vuelve a la prueba), H (IA caída → 503 y no
 descuenta), I/J (persistencia tras recargar y re-login), L (16 envíos simultáneos → exactamente 10
@@ -250,7 +261,8 @@ Manual en staging/producción:
 2. Abrir Luna → "Prueba gratis: 10 mensajes con Luna"; enviar → "Te quedan 9…".
 3. Enviar hasta 0 → tarjeta "Ya conociste a Luna ✨"; abrir Hana → sigue en 10.
 4. Cerrar sesión, entrar de nuevo / otro navegador → mismos números.
-5. Asignar Premium desde el panel admin → Luna sin contador; Victoria muestra prueba gratis.
+5. Abrir Victoria con cuenta gratis → aviso "exclusiva VIP", sin poder enviar.
+6. Asignar Premium desde el panel admin → Luna sin contador; Victoria sigue pidiendo VIP.
 
 ## 11. Producción
 
@@ -261,7 +273,7 @@ Manual en staging/producción:
   antes de desplegar, como en cualquier cambio de esquema.
 - Desplegar **primero el backend** y luego el frontend. El frontend anterior sigue funcionando con
   el backend nuevo (los campos viejos se conservan).
-- Costo de IA: el máximo gratis por cuenta es 10 × número de chicas activas (hoy 14 → 140
+- Costo de IA: el máximo gratis por cuenta es 10 × chicas activas no VIP (hoy 13 → 130
   mensajes). El rate limit existente (40 mensajes/min por usuario) sigue activo. Crear muchas
   cuentas sigue siendo posible, igual que antes; si se vuelve un problema, la siguiente medida
   sería exigir correo verificado para usar la prueba.

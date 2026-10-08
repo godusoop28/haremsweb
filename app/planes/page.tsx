@@ -17,8 +17,9 @@ export default function PlanesPage() {
           Desbloquea la experiencia <span className="text-gradient">completa</span>
         </h1>
         <p className="mt-4 text-slate-400">
-          Cada chica incluye {FREE_MESSAGES_PER_CHARACTER} mensajes gratis para que la conozcas. Con un
-          plan sigues la conversación, generas imágenes y tienes hasta 2000 mensajes al mes con VIP.
+          Cada chica incluye {FREE_MESSAGES_PER_CHARACTER} mensajes gratis para que la conozcas (Victoria
+          es exclusiva VIP). Con un plan sigues la conversación, le pides fotos y tienes hasta 2000
+          mensajes al mes con VIP.
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-sm text-slate-400">
           <span className="flex items-center gap-1.5">

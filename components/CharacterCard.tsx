@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Character } from "@/lib/data";
 import { canAccessLabel } from "@/lib/access";
 import { useAuth } from "@/lib/auth-context";
-import { freeTrialLabel, useFreeMessages } from "@/lib/useFreeMessages";
+import { freeTrialLabel, isTrialAvailable, useFreeMessages } from "@/lib/useFreeMessages";
 import PremiumBadge from "./PremiumBadge";
 
 const MAX_VISIBLE_TAGS = 3;
@@ -15,10 +15,10 @@ export default function CharacterCard({ character }: { character: Character }) {
   const comingSoon = character.comingSoon === true;
   const { statuses } = useFreeMessages();
   const locked = !canAccessLabel(user?.plan, character.access);
-  // Prueba gratuita por personaje: sin plan con acceso, cada chica se puede probar con N mensajes.
+  // Prueba gratuita por personaje: sin plan con acceso, cada chica (salvo las VIP) se prueba con N mensajes.
   const trialStatus = comingSoon ? undefined : statuses[character.id];
   const trialLabel = freeTrialLabel(trialStatus);
-  const trialAvailable = !!trialStatus && !trialStatus.hasPaidAccess && trialStatus.remaining > 0;
+  const trialAvailable = isTrialAvailable(trialStatus);
   const canChat = !locked || trialAvailable;
   const visibleTags = character.tags.slice(0, MAX_VISIBLE_TAGS);
   const extraTagCount = character.tags.length - visibleTags.length;
