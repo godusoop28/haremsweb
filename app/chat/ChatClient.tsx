@@ -13,15 +13,20 @@ import { characters } from "@/lib/data";
 import { canAccessType } from "@/lib/access";
 import { useRemoteCharacters } from "@/lib/useCharacters";
 import {
+  AI_UNAVAILABLE,
   api,
   ApiError,
+  FREE_MESSAGE_LIMIT_REACHED,
+  MONTHLY_MESSAGE_LIMIT_REACHED,
   relationshipStatusLabels,
   type AdultLevel,
-  type CharacterResponse,
+  type FreeMessageStatus,
   type ImageLimitPeriod,
   type RelationshipResponse,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { trackEvent } from "@/lib/analytics";
+import { freeTrialLabel, useFreeMessages } from "@/lib/useFreeMessages";
 
 interface ImageUsageState {
   usedThisPeriod: number;
@@ -40,6 +45,8 @@ function periodWord(period: ImageLimitPeriod): string {
 
 interface Message {
   from: "user" | "ai" | "system" | "levelup";
+  /** Id del envío (solo mensajes del usuario aún no confirmados) — permite retirarlo si el backend lo rechaza. */
+  clientId?: string;
   text: string;
   imageUrl?: string;
   /** Cuándo deja de servir imageUrl — ver GeneratedImage. */
@@ -86,6 +93,21 @@ const ASPECT_OPTIONS: { label: string; value: "portrait" | "square" | "landscape
 ];
 
 const AUTO = "Automática";
+
+/** Id único por envío para que el backend ignore duplicados (doble click / reintento de red). */
+function newClientMessageId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/** Texto discreto del contador de la prueba gratuita dentro del chat. */
+function freeTrialText(status: FreeMessageStatus, firstName: string): string {
+  if (status.remaining === 1) return `Último mensaje gratuito con ${firstName}`;
+  if (status.used === 0) return `Prueba gratis: ${status.limit} mensajes con ${firstName}`;
+  return `Te quedan ${status.remaining} mensajes gratis con ${firstName}`;
+}
 const CUSTOM = "Personalizada";
 
 export default function ChatClient({ initialId }: { initialId: string }) {
@@ -122,7 +144,10 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   const [aspectRatio, setAspectRatio] = useState<"portrait" | "square" | "landscape">("portrait");
   const [customPrompt, setCustomPrompt] = useState("");
 
-  const [usage, setUsage] = useState<Record<string, { used: number; limit: number | null }>>({});
+  // Prueba gratuita por personaje: el backend es la fuente de verdad (persistida en BD), esto solo la muestra.
+  const { statuses: freeStatuses, update: updateFreeStatus } = useFreeMessages();
+  // Candado síncrono contra doble Enter/click antes de que isTyping llegue a renderizarse.
+  const sendingRef = useRef(false);
   // Gate: true cuando getConversations() ha terminado (con éxito o error).
   // Evita que el historial se cargue antes de tener los IDs reales.
   const [conversationsLoaded, setConversationsLoaded] = useState(false);
@@ -258,8 +283,10 @@ export default function ChatClient({ initialId }: { initialId: string }) {
     });
   }
 
-  const charUsage = usage[selectedId];
-  const limitReached = charUsage?.limit != null && charUsage.used >= charUsage.limit;
+  const freeStatus = freeStatuses[selectedId];
+  const freeTrialActive = freeStatus?.freeTrialApplies === true;
+  const freeExhausted = freeTrialActive && freeStatus.remaining <= 0;
+  const firstName = character.name.split(" ")[0];
 
   // ── Image generation capability ──────────────────────────────────────────────
   const isPaidUser = user?.plan !== "FREE";
@@ -268,48 +295,96 @@ export default function ChatClient({ initialId }: { initialId: string }) {
     imageUsage === null || imagesRemainingInPeriod(imageUsage) > 0 || imageUsage.extraCredits > 0;
   const imageEnabled = isPaidUser && characterSupportsImages;
 
+  function removeMessage(charId: string, clientId: string) {
+    setMessagesByChar((prev) => ({
+      ...prev,
+      [charId]: (prev[charId] ?? []).filter((m) => m.clientId !== clientId),
+    }));
+  }
+
   // ── Send chat message ────────────────────────────────────────────────────────
   async function sendMessage() {
     const trimmed = input.trim();
-    if (!trimmed || !token || isTyping || limitReached) return;
+    if (!trimmed || !token || isTyping || freeExhausted || sendingRef.current) return;
+    sendingRef.current = true;
 
-    appendMessage(selectedId, { from: "user", text: trimmed });
+    const charId = selectedId;
+    const clientMessageId = newClientMessageId();
+    const trialBefore = freeStatuses[charId];
+    if (trialBefore?.freeTrialApplies && trialBefore.used === 0) {
+      trackEvent("free_chat_started", { character_id: charId, character_name: character.name });
+    }
+
+    appendMessage(charId, { from: "user", text: trimmed, clientId: clientMessageId });
     setInput("");
     setIsTyping(true);
 
     try {
       const response = await api.sendChatMessage(token, {
-        characterSlug: selectedId,
+        characterSlug: charId,
         message: trimmed,
+        clientMessageId,
       });
-      appendMessage(selectedId, { from: "ai", text: response.reply });
-      setConversationIds((prev) => ({ ...prev, [selectedId]: response.conversationId }));
-      setUsage((prev) => ({
+      setMessagesByChar((prev) => ({
         ...prev,
-        [selectedId]: { used: response.messagesUsed, limit: response.messagesLimit },
+        [charId]: [
+          ...(prev[charId] ?? []).map((m) => (m.clientId === clientMessageId ? { ...m, clientId: undefined } : m)),
+          { from: "ai", text: response.reply },
+        ],
       }));
-      refreshRelationship(selectedId);
+      setConversationIds((prev) => ({ ...prev, [charId]: response.conversationId }));
+      if (response.freeUsage) {
+        updateFreeStatus(response.freeUsage);
+        if (response.freeUsage.freeTrialApplies) {
+          trackEvent("free_message_sent", {
+            character_id: charId,
+            character_name: character.name,
+            remaining_free_messages: response.freeUsage.remaining,
+          });
+          if (response.freeUsage.remaining === 0) {
+            trackEvent("free_messages_exhausted", { character_id: charId, character_name: character.name });
+          }
+        }
+      }
+      refreshRelationship(charId);
       if (response.connectionLeveledUp) {
-        notifyLevelUp(selectedId, character.name, response.relationshipStatus);
+        notifyLevelUp(charId, character.name, response.relationshipStatus);
       }
     } catch (err) {
+      // El backend no guardó ni cobró nada: se retira el mensaje optimista y se devuelve el texto.
+      const restore = () => {
+        removeMessage(charId, clientMessageId);
+        setInput((current) => current || trimmed);
+      };
       if (err instanceof ApiError && err.status === 401) {
-        router.replace(`/login?next=/chat?personaje=${selectedId}`);
+        router.replace(`/login?next=/chat?personaje=${charId}`);
+        return;
+      }
+      if (err instanceof ApiError && err.code === FREE_MESSAGE_LIMIT_REACHED) {
+        // Prueba agotada con ESTE personaje: el compositor se convierte en el CTA de planes (sin popup).
+        restore();
+        const status = err.data?.freeUsage as FreeMessageStatus | undefined;
+        if (status) updateFreeStatus(status);
+        trackEvent("free_messages_exhausted", { character_id: charId, character_name: character.name });
+        return;
+      }
+      if (err instanceof ApiError && err.code === AI_UNAVAILABLE) {
+        restore();
+        appendMessage(charId, { from: "system", text: err.message });
         return;
       }
       if (err instanceof ApiError && err.status === 403) {
-        // FREE tiene su propio tope gratis por personaje; PREMIUM/VIP tienen un tope mensual de
-        // cuenta distinto (ver AccessControlService) — el mismo 403, pero el CTA correcto cambia
-        // según el plan: a FREE le ofrecemos Premium, a Premium subir a VIP, a VIP (tope) ya no
-        // hay a qué subir.
-        if (user?.plan === "VIP") {
+        restore();
+        // PREMIUM/VIP tienen un tope mensual de cuenta: a Premium le ofrecemos subir a VIP, a VIP
+        // (tope) ya no hay a qué subir.
+        if (err.code === MONTHLY_MESSAGE_LIMIT_REACHED && user?.plan === "VIP") {
           setUpgradeModal({
             title: "Límite mensual alcanzado",
             message: err.message,
             ctaLabel: "Ver mi cuenta",
             ctaHref: "/dashboard",
           });
-        } else if (user?.plan === "PREMIUM") {
+        } else if (err.code === MONTHLY_MESSAGE_LIMIT_REACHED) {
           setUpgradeModal({
             title: "Límite mensual alcanzado",
             message: err.message,
@@ -317,31 +392,24 @@ export default function ChatClient({ initialId }: { initialId: string }) {
             ctaLabel: "Mejorar a VIP",
           });
         } else {
-          setUpgradeModal({
-            title: "Límite gratuito alcanzado",
-            message: err.message,
-            benefits: [
-              "980 mensajes al mes con todas las chicas",
-              "16 personajes desbloqueadas",
-              "Generación de imágenes incluida",
-              "Cancela cuando quieras",
-            ],
-            ctaLabel: "Continuar con Premium",
-          });
+          setUpgradeModal({ title: "Desbloquea esta conversación", message: err.message });
         }
         return;
       }
       if (err instanceof ApiError && err.status === 429) {
-        appendMessage(selectedId, {
+        restore();
+        appendMessage(charId, {
           from: "system",
           text: "Vas muy rápido. Espera un momento antes de enviar otro mensaje.",
         });
         return;
       }
+      restore();
       const message =
-        err instanceof ApiError ? err.message : "Ocurrió un error inesperado. Inténtalo más tarde.";
-      appendMessage(selectedId, { from: "system", text: message });
+        err instanceof ApiError ? err.message : "No pudimos enviar tu mensaje. Revisa tu conexión e inténtalo de nuevo.";
+      appendMessage(charId, { from: "system", text: message });
     } finally {
+      sendingRef.current = false;
       setIsTyping(false);
     }
   }
@@ -491,35 +559,9 @@ export default function ChatClient({ initialId }: { initialId: string }) {
     }
   }
 
-  function selectCharacter(c: CharacterResponse | undefined, id: string) {
-    if (c && !canAccessType(user?.plan, c.accessType)) {
-      const characterName = characters.find((ch) => ch.id === id)?.name ?? "Este personaje";
-      if (c.accessType === "VIP") {
-        setUpgradeModal({
-          title: `${characterName} es exclusiva VIP`,
-          message: "Desbloquea el plan VIP para acceder al personaje más difícil e intenso del catálogo.",
-          benefits: [
-            `Chat privado con ${characterName}`,
-            "30 imágenes por semana",
-            "Acceso a todos los personajes Premium",
-          ],
-          ctaLabel: "Desbloquear VIP",
-        });
-      } else {
-        setUpgradeModal({
-          title: `${characterName} es Premium`,
-          message: "Desbloquea Premium para chatear con ella y generar imágenes exclusivas.",
-          benefits: [
-            `Chat con ${characterName} (980 mensajes al mes)`,
-            "16 personajes desbloqueados",
-            "15 imágenes por semana",
-            "Imágenes Normal y Sin ropa",
-          ],
-          ctaLabel: "Desbloquear Premium",
-        });
-      }
-      return;
-    }
+  function selectCharacter(id: string) {
+    // Sin candado: quien no tiene un plan con acceso a este personaje lo prueba con sus mensajes
+    // gratis (el backend valida y cuenta). Si ya se agotaron, el chat muestra el CTA de planes.
     setSelectedId(id);
     // Bug real reportado: la URL se quedaba en el personaje anterior aunque el chat ya mostrara
     // otro (selectCharacter solo tocaba el estado local). scroll:false porque es solo para que
@@ -557,7 +599,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         {visibleCharacters.map((c) => (
           <button
             key={c.id}
-            onClick={() => selectCharacter(remoteCharacters.find((r) => r.slug === c.id), c.id)}
+            onClick={() => selectCharacter(c.id)}
             className="flex shrink-0 flex-col items-center gap-1"
           >
             <Avatar
@@ -590,10 +632,11 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           {visibleCharacters.map((c) => {
             const remoteC = remoteCharacters.find((r) => r.slug === c.id);
             const locked = remoteC ? !canAccessType(user?.plan, remoteC.accessType) : c.isPremium;
+            const trialLabel = freeTrialLabel(freeStatuses[c.id]);
             return (
               <button
                 key={c.id}
-                onClick={() => selectCharacter(remoteC, c.id)}
+                onClick={() => selectCharacter(c.id)}
                 className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all ${
                   selectedId === c.id
                     ? "glass-strong border border-cyan-400/30 shadow-[0_0_25px_-12px_rgba(34,211,238,0.6)]"
@@ -611,6 +654,15 @@ export default function ChatClient({ initialId }: { initialId: string }) {
                     />
                   </div>
                   <p className="truncate text-xs text-slate-400">{c.archetype}</p>
+                  {trialLabel && (
+                    <p
+                      className={`truncate text-[10px] font-medium ${
+                        freeStatuses[c.id].remaining > 0 ? "text-cyan-300/80" : "text-slate-500"
+                      }`}
+                    >
+                      {trialLabel}
+                    </p>
+                  )}
                 </div>
               </button>
             );
@@ -656,22 +708,6 @@ export default function ChatClient({ initialId }: { initialId: string }) {
             points={relationship?.connectionPoints}
             className="mt-2.5 sm:mt-3"
           />
-
-          {user?.plan === "FREE" && charUsage?.limit != null && (
-            <div className="mt-2 flex items-center justify-between gap-3 text-xs sm:mt-3">
-              <span className={limitReached ? "text-amber-300" : "text-slate-400"}>
-                Mensajes gratis: {charUsage.used} / {charUsage.limit}
-              </span>
-              {limitReached && (
-                <Link
-                  href="/planes"
-                  className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 font-semibold text-cyan-300 transition-colors hover:bg-cyan-400/20"
-                >
-                  Mejorar plan
-                </Link>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Messages */}
@@ -913,31 +949,103 @@ export default function ChatClient({ initialId }: { initialId: string }) {
             </div>
           )}
 
-          {/* Área D: chat normal */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              type="text"
-              disabled={limitReached}
-              placeholder={
-                limitReached ? "Límite de mensajes gratuitos alcanzado" : "Escribe un mensaje…"
-              }
-              className="flex-1 rounded-full border border-cyan-400/15 bg-black/30 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 backdrop-blur-md focus:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50"
-            />
+          {/* Área D: chat normal — o, si la prueba gratuita con este personaje terminó, el CTA de planes. */}
+          {freeExhausted ? (
+            <div className="rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/[0.08] via-transparent to-blue-600/[0.08] p-4 text-center sm:p-5">
+              <p className="text-base font-semibold text-white">Ya conociste a {firstName} ✨</p>
+              <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-slate-400">
+                Usaste tus {freeStatus.limit} mensajes gratis con ella. Elige un plan para seguir
+                conversando con {firstName} y desbloquear a todas las chicas.
+              </p>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+                <Link
+                  href="/planes"
+                  onClick={() =>
+                    trackEvent("plans_cta_clicked", {
+                      source: "free_trial_exhausted",
+                      character_id: selectedId,
+                      character_name: character.name,
+                      remaining_free_messages: 0,
+                    })
+                  }
+                  className="glow-button rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-6 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-[1.03]"
+                >
+                  Ver planes
+                </Link>
+                <Link
+                  href="/personajes"
+                  className="rounded-full border border-white/10 bg-white/5 px-6 py-2.5 text-sm font-semibold text-slate-200 transition-colors hover:border-white/20"
+                >
+                  Explorar otros personajes
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <>
+              {freeTrialActive && (
+                <div className="mb-2 px-1">
+                  <div className="flex items-center justify-between gap-3 text-[11px]">
+                    <span
+                      className={`min-w-0 truncate ${freeStatus.remaining <= 3 ? "text-amber-200/90" : "text-slate-400"}`}
+                    >
+                      {freeTrialText(freeStatus, firstName)}
+                    </span>
+                    {freeStatus.remaining <= 3 ? (
+                      <Link
+                        href="/planes"
+                        onClick={() =>
+                          trackEvent("plans_cta_clicked", {
+                            source: "free_trial_low",
+                            character_id: selectedId,
+                            character_name: character.name,
+                            remaining_free_messages: freeStatus.remaining,
+                          })
+                        }
+                        className="shrink-0 font-semibold text-cyan-300 hover:text-cyan-200"
+                      >
+                        Ver planes
+                      </Link>
+                    ) : (
+                      <span className="shrink-0 tabular-nums text-slate-500">
+                        {freeStatus.remaining}/{freeStatus.limit}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1 h-0.5 overflow-hidden rounded-full bg-white/5">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        freeStatus.remaining <= 3 ? "bg-amber-300/60" : "bg-cyan-400/50"
+                      }`}
+                      style={{ width: `${(freeStatus.remaining / Math.max(1, freeStatus.limit)) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center gap-2 sm:gap-3">
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && sendMessage()}
+                  type="text"
+                  maxLength={4000}
+                  enterKeyHint="send"
+                  placeholder="Escribe un mensaje…"
+                  className="min-w-0 flex-1 rounded-full border border-cyan-400/15 bg-black/30 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 backdrop-blur-md focus:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+                />
 
-            <button
-              onClick={sendMessage}
-              disabled={limitReached}
-              className="glow-button flex shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 p-2.5 text-white transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Enviar mensaje"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.126A59.768 59.768 0 0 1 21.485 12 59.77 59.77 0 0 1 3.27 20.876L5.999 12Zm0 0h7.5" />
-              </svg>
-            </button>
-          </div>
+                <button
+                  onClick={sendMessage}
+                  disabled={isTyping}
+                  className="glow-button flex shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 p-2.5 text-white transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Enviar mensaje"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.126A59.768 59.768 0 0 1 21.485 12 59.77 59.77 0 0 1 3.27 20.876L5.999 12Zm0 0h7.5" />
+                  </svg>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

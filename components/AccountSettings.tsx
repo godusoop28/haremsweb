@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { api, ApiError } from "@/lib/api";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 
 export default function AccountSettings() {
   const { user, token, logout, refresh } = useAuth();
@@ -182,6 +183,14 @@ export default function AccountSettings() {
           </div>
         )}
       </div>
+
+      <p className="mt-6 border-t border-white/5 pt-4 text-xs text-slate-500">
+        ¿Necesitas ayuda con tu cuenta o un pago? Escríbenos a{" "}
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="font-medium text-cyan-300 hover:text-cyan-200">
+          {SUPPORT_EMAIL}
+        </a>
+        .
+      </p>
     </div>
   );
 }

@@ -77,8 +77,7 @@ export default function PricingSection() {
             Planes para <span className="text-gradient">cada experiencia</span>
           </h2>
           <p className="mt-3 text-slate-400">
-            Empieza gratis y mejora cuando quieras desbloquear todo el potencial de
-            HAREMS.
+            Prueba gratis a cada chica y elige un plan cuando quieras seguir la conversación.
           </p>
         </div>
 

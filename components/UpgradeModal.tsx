@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { trackEvent } from "@/lib/analytics";
 
 interface UpgradeModalProps {
   title: string;
@@ -62,6 +63,7 @@ export default function UpgradeModal({
           </button>
           <Link
             href={ctaHref}
+            onClick={() => trackEvent("plans_cta_clicked", { source: "upgrade_modal", title })}
             className="glow-button order-1 flex-1 rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-105 sm:order-2"
           >
             {ctaLabel}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 
 export default function Footer() {
   const pathname = usePathname();
@@ -54,6 +55,12 @@ export default function Footer() {
               <li>Solo para mayores de 18 años</li>
               <li>Plataforma privada y segura</li>
               <li>Personajes ficticios, no personas reales</li>
+              <li>
+                Soporte:{" "}
+                <a href={`mailto:${SUPPORT_EMAIL}`} className="text-slate-300 hover:text-cyan-300">
+                  {SUPPORT_EMAIL}
+                </a>
+              </li>
             </ul>
           </div>
         </div>

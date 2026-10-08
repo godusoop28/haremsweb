@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError, type PlanType } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { trackEvent } from "@/lib/analytics";
 
 type State = "confirming" | "waiting" | "active" | "timeout" | "error";
 
@@ -51,6 +52,7 @@ export default function SuccessClient() {
           } else {
             await api.confirmPayPalSubscription(token!, subscriptionId);
           }
+          trackEvent("purchase_completed", { type: "subscription", plan: revisedPlan ?? null });
         } catch (err) {
           if (err instanceof ApiError) {
             if (err.status === 401 || err.status === 403) {

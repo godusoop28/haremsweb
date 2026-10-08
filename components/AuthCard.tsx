@@ -6,6 +6,7 @@ import { Suspense, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import BrandLogo from "@/components/BrandLogo";
+import { trackEvent } from "@/lib/analytics";
 
 interface AuthCardProps {
   mode: "login" | "register";
@@ -64,6 +65,7 @@ function AuthCardInner({
 
       if (mode === "register") {
         const registeredUser = await register({ name, email, password, ageVerified });
+        trackEvent("registration_completed");
         // Modo "suave": el usuario ya queda logueado (register() ya guardó el token). Si su
         // correo no quedó verificado, lo llevamos a la pantalla de verificación como siguiente
         // paso natural, pero no lo bloqueamos — puede navegar a otro lado libremente.

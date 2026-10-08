@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError, type CreditPurchaseResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { trackEvent } from "@/lib/analytics";
 
 type State = "capturing" | "completed" | "error" | "needs-login";
 
@@ -41,6 +42,7 @@ function CreditosSuccessContent() {
       .then((res) => {
         setPurchase(res);
         setState("completed");
+        trackEvent("purchase_completed", { type: "credits", package_id: res.packageId, value: res.amount });
       })
       .catch((err) => {
         setErrorMsg(err instanceof ApiError ? err.message : "No se pudo confirmar el pago.");

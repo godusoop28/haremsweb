@@ -6,6 +6,7 @@ import Link from "next/link";
 import { api, ApiError, type PlanType } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { plans, TRIAL_PLAN_ENABLED } from "@/lib/data";
+import { trackEvent } from "@/lib/analytics";
 
 const planIdByType: Record<string, string> = {
   PREMIUM: "premium",
@@ -83,6 +84,7 @@ function CheckoutContent() {
     setLoading(true);
     setError(null);
     try {
+      trackEvent("checkout_started", { plan });
       const response = await api.createPayPalSubscription(token, plan);
       if (!response.approvalUrl) {
         setError("PayPal no devolvió un link de aprobación. Intenta de nuevo.");

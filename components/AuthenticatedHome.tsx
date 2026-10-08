@@ -8,6 +8,7 @@ import LiveConnectionMeter from "@/components/LiveConnectionMeter";
 import { characters } from "@/lib/data";
 import { canAccessType } from "@/lib/access";
 import { useRemoteCharacters } from "@/lib/useCharacters";
+import { useFreeMessages } from "@/lib/useFreeMessages";
 import {
   api,
   type ConversationResponse,
@@ -41,6 +42,7 @@ function relativeTime(iso: string): string {
  */
 export default function AuthenticatedHome({ user, token }: { user: UserResponse; token: string }) {
   const remoteCharacters = useRemoteCharacters();
+  const { statuses: freeStatuses } = useFreeMessages();
   const [conversations, setConversations] = useState<ConversationResponse[]>([]);
   const [relationship, setRelationship] = useState<RelationshipResponse | null>(null);
   const [recentImages, setRecentImages] = useState<ImageGalleryItemResponse[]>([]);
@@ -69,7 +71,10 @@ export default function AuthenticatedHome({ user, token }: { user: UserResponse;
     .filter((c) => {
       if (c.comingSoon) return false;
       const remote = remoteCharacters.find((r) => r.slug === c.id);
-      const accessible = remote ? canAccessType(user.plan, remote.accessType) : !c.isPremium;
+      const trial = freeStatuses[c.id];
+      const accessible =
+        (remote ? canAccessType(user.plan, remote.accessType) : !c.isPremium) ||
+        (!!trial && !trial.hasPaidAccess && trial.remaining > 0);
       const alreadyChatting = conversations.some((conv) => conv.characterSlug === c.id);
       return accessible && !alreadyChatting;
     })

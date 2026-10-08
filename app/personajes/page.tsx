@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import CharacterBrowser from "@/components/CharacterBrowser";
 import { getMergedCharacters } from "@/lib/characters";
+import { FREE_MESSAGES_PER_CHARACTER } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "Personajes — HAREMS",
@@ -20,8 +21,8 @@ export default async function PersonajesPage() {
             Elige a tu <span className="text-gradient">compañera ideal</span>
           </h1>
           <p className="mt-4 text-slate-400">
-            Luna y Hana están disponibles de forma gratuita para usuarios registrados.
-            El resto de personajes forman parte de la experiencia Premium.
+            Crea tu cuenta gratis y prueba a cada chica con {FREE_MESSAGES_PER_CHARACTER} mensajes.
+            Con Premium o VIP sigues la conversación y desbloqueas sus imágenes.
           </p>
         </div>
 

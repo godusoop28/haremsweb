@@ -11,12 +11,15 @@ export const TOKEN_KEY = "harems_token";
 export class ApiError extends Error {
   status: number;
   code?: string;
+  /** Cuerpo JSON completo del error (p.ej. `freeUsage` en FREE_MESSAGE_LIMIT_REACHED). */
+  data?: Record<string, unknown>;
 
-  constructor(message: string, status: number, code?: string) {
+  constructor(message: string, status: number, code?: string, data?: Record<string, unknown>) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.data = data;
   }
 }
 
@@ -38,8 +41,10 @@ async function request<T>(
   if (!res.ok) {
     let message = "Ocurrió un error inesperado. Inténtalo más tarde.";
     let code: string | undefined;
+    let body: Record<string, unknown> | undefined;
     try {
       const data = await res.json();
+      body = data ?? undefined;
       if (data?.message) message = data.message;
       if (data?.code) code = data.code;
     } catch {
@@ -50,7 +55,7 @@ async function request<T>(
       window.localStorage.removeItem(TOKEN_KEY);
     }
 
-    throw new ApiError(message, res.status, code);
+    throw new ApiError(message, res.status, code, body);
   }
 
   if (res.status === 204) {
@@ -144,6 +149,27 @@ export interface ConversationResponse {
   messages: MessageResponse[];
 }
 
+/**
+ * Prueba gratuita por usuario + personaje (el backend es la fuente de verdad). `characterId` es
+ * el slug. hasPaidAccess = el plan vigente da acceso completo a este personaje y el contador no aplica.
+ */
+export interface FreeMessageStatus {
+  characterId: string;
+  characterName: string;
+  limit: number;
+  used: number;
+  remaining: number;
+  hasPaidAccess: boolean;
+  freeTrialApplies: boolean;
+  canSendMessage: boolean;
+  authenticated: boolean;
+}
+
+/** Códigos de negocio que el backend manda en `code` y que el frontend interpreta. */
+export const FREE_MESSAGE_LIMIT_REACHED = "FREE_MESSAGE_LIMIT_REACHED";
+export const MONTHLY_MESSAGE_LIMIT_REACHED = "MONTHLY_MESSAGE_LIMIT_REACHED";
+export const AI_UNAVAILABLE = "AI_UNAVAILABLE";
+
 export interface ChatResponse {
   conversationId: number;
   reply: string;
@@ -152,6 +178,8 @@ export interface ChatResponse {
   connectionLevel: number;
   relationshipStatus: RelationshipStatus;
   connectionLeveledUp: boolean;
+  /** Estado actualizado de la prueba gratuita con este personaje. */
+  freeUsage: FreeMessageStatus | null;
 }
 
 export interface RelationshipResponse {
@@ -463,7 +491,17 @@ export const api = {
     return request<CharacterResponse>(`/characters/${slug}`);
   },
 
-  sendChatMessage(token: string, data: { characterSlug: string; message: string }) {
+  /** Prueba gratuita con todos los personajes. Sin token devuelve el cupo inicial (visitante). */
+  getFreeMessageStatuses(token?: string | null) {
+    return request<FreeMessageStatus[]>("/characters/free-message-status", { token });
+  },
+
+  getFreeMessageStatus(slug: string, token?: string | null) {
+    return request<FreeMessageStatus>(`/characters/${slug}/free-message-status`, { token });
+  },
+
+  /** clientMessageId: id único por envío — si llega dos veces, el backend no cobra ni genera dos veces. */
+  sendChatMessage(token: string, data: { characterSlug: string; message: string; clientMessageId?: string }) {
     return request<ChatResponse>("/chat/send", {
       method: "POST",
       token,

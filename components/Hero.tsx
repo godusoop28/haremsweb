@@ -1,5 +1,6 @@
 import Link from "next/link";
 import HeroBackground from "./HeroBackground";
+import { FREE_MESSAGES_PER_CHARACTER } from "@/lib/data";
 
 export default function Hero() {
   return (
@@ -40,7 +41,7 @@ export default function Hero() {
             </div>
 
             <p className="mt-4 text-xs text-slate-500">
-              Empieza gratis con personajes seleccionados.
+              {FREE_MESSAGES_PER_CHARACTER} mensajes gratis con cada chica · Sin tarjeta.
             </p>
           </div>
 

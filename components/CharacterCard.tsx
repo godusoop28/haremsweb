@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Character } from "@/lib/data";
 import { canAccessLabel } from "@/lib/access";
 import { useAuth } from "@/lib/auth-context";
+import { freeTrialLabel, useFreeMessages } from "@/lib/useFreeMessages";
 import PremiumBadge from "./PremiumBadge";
 
 const MAX_VISIBLE_TAGS = 3;
@@ -12,7 +13,13 @@ const MAX_VISIBLE_TAGS = 3;
 export default function CharacterCard({ character }: { character: Character }) {
   const { user } = useAuth();
   const comingSoon = character.comingSoon === true;
+  const { statuses } = useFreeMessages();
   const locked = !canAccessLabel(user?.plan, character.access);
+  // Prueba gratuita por personaje: sin plan con acceso, cada chica se puede probar con N mensajes.
+  const trialStatus = comingSoon ? undefined : statuses[character.id];
+  const trialLabel = freeTrialLabel(trialStatus);
+  const trialAvailable = !!trialStatus && !trialStatus.hasPaidAccess && trialStatus.remaining > 0;
+  const canChat = !locked || trialAvailable;
   const visibleTags = character.tags.slice(0, MAX_VISIBLE_TAGS);
   const extraTagCount = character.tags.length - visibleTags.length;
 
@@ -34,13 +41,25 @@ export default function CharacterCard({ character }: { character: Character }) {
           className="absolute right-3 top-3"
         />
 
+        {trialLabel && (
+          <span
+            className={`absolute left-3 top-3 rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-wide backdrop-blur-sm ${
+              trialAvailable
+                ? "border-cyan-300/30 bg-black/45 text-cyan-100"
+                : "border-white/10 bg-black/45 text-slate-400"
+            }`}
+          >
+            {trialLabel}
+          </span>
+        )}
+
         {comingSoon && (
           <span className="absolute left-3 top-3 rounded-full border border-amber-300/40 bg-amber-400/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-200 backdrop-blur-sm">
             Muy pronto
           </span>
         )}
 
-        {locked && (
+        {locked && !trialAvailable && (
           <div className="absolute right-3 top-11 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-slate-300 backdrop-blur-sm">
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path
@@ -92,14 +111,14 @@ export default function CharacterCard({ character }: { character: Character }) {
             </span>
           ) : (
             <Link
-              href={locked ? "/planes" : `/chat?personaje=${character.id}`}
+              href={canChat ? `/chat?personaje=${character.id}` : "/planes"}
               className={`rounded-full px-3 py-2 text-center text-xs font-semibold transition-transform hover:scale-[1.03] ${
-                locked
-                  ? "border border-cyan-400/30 bg-white/5 text-cyan-200"
-                  : "glow-button bg-gradient-to-r from-cyan-400 to-blue-600 text-white"
+                canChat
+                  ? "glow-button bg-gradient-to-r from-cyan-400 to-blue-600 text-white"
+                  : "border border-cyan-400/30 bg-white/5 text-cyan-200"
               }`}
             >
-              {locked ? "Desbloquear" : "Chatear"}
+              {!canChat ? "Desbloquear" : locked ? "Probar gratis" : "Chatear"}
             </Link>
           )}
         </div>

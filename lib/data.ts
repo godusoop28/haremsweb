@@ -655,18 +655,24 @@ export interface Plan {
 
 export const TRIAL_PLAN_ENABLED = true;
 
+/**
+ * Mensajes gratis por personaje que se anuncian en la web. El límite real lo aplica el backend
+ * (FREE_MESSAGES_PER_CHARACTER); si se cambia allá, actualizar también este número.
+ */
+export const FREE_MESSAGES_PER_CHARACTER = 10;
+
 export const plans: Plan[] = [
   {
     id: "free",
     name: "Gratis",
     price: "$0",
     period: "siempre",
-    description: "Para conocer la plataforma y empezar a chatear.",
+    description: "Conoce a cada chica antes de pagar.",
     features: [
-      "Luna Valmont y Hana Mori desbloqueadas",
-      "5 mensajes gratuitos por personaje",
+      `${FREE_MESSAGES_PER_CHARACTER} mensajes gratis con cada chica`,
+      "La misma IA y personalidad que en los planes de pago",
       "Sin generación de imágenes",
-      "Sin tarjeta de crédito requerida",
+      "Sin tarjeta de crédito",
     ],
     highlighted: false,
   },
