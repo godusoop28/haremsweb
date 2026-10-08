@@ -650,6 +650,8 @@ export interface Plan {
   period: string;
   description: string;
   features: string[];
+  /** Beneficios de `features` que se resaltan visualmente en la tarjeta (p. ej. el descuento VIP). */
+  accentFeatures?: string[];
   highlighted: boolean;
 }
 
@@ -661,16 +663,39 @@ export const TRIAL_PLAN_ENABLED = true;
  */
 export const FREE_MESSAGES_PER_CHARACTER = 10;
 
+/**
+ * Personajes incluidos en la prueba gratuita (slugs). Solo para los textos de la web: quien bloquea
+ * de verdad es el backend (FREE_TRIAL_CHARACTERS); si se cambia allá, actualizar también esta lista.
+ */
+export const FREE_TRIAL_CHARACTER_IDS = ["luna-valmont", "hana-mori"];
+
+/** Nombres cortos de las chicas de la prueba, en el orden de FREE_TRIAL_CHARACTER_IDS ("Luna", "Hana"). */
+export const FREE_TRIAL_CHARACTER_NAMES = FREE_TRIAL_CHARACTER_IDS.map(
+  (id) => characters.find((c) => c.id === id)?.name.split(" ")[0] ?? id
+);
+
+/** "Luna y Hana" (o "Luna, Hana y Kiara") para los textos de marketing. */
+export const FREE_TRIAL_NAMES_TEXT =
+  FREE_TRIAL_CHARACTER_NAMES.length > 1
+    ? `${FREE_TRIAL_CHARACTER_NAMES.slice(0, -1).join(", ")} y ${FREE_TRIAL_CHARACTER_NAMES.at(-1)}`
+    : FREE_TRIAL_CHARACTER_NAMES.join("");
+
+/**
+ * Descuento VIP en créditos de imagen que se anuncia en la web. El descuento real lo calcula y
+ * cobra el backend (ExtraCreditPackage.VIP_DISCOUNT_MULTIPLIER); si se cambia allá, actualizar aquí.
+ */
+export const VIP_IMAGE_CREDIT_DISCOUNT_PERCENT = 10;
+
 export const plans: Plan[] = [
   {
     id: "free",
     name: "Gratis",
     price: "$0",
     period: "siempre",
-    description: "Conoce a cada chica antes de pagar.",
+    description: "Conoce HAREMS antes de elegir un plan.",
     features: [
-      `${FREE_MESSAGES_PER_CHARACTER} mensajes gratis con cada chica (excepto Victoria, VIP)`,
-      "La misma IA y personalidad que en los planes de pago",
+      ...FREE_TRIAL_CHARACTER_NAMES.map((name) => `${FREE_MESSAGES_PER_CHARACTER} mensajes gratis con ${name}`),
+      "Misma IA y personalidad del chat",
       "Sin fotos (disponibles en planes de pago)",
       "Sin tarjeta de crédito",
     ],
@@ -719,8 +744,9 @@ export const plans: Plan[] = [
       "2000 mensajes al mes (más del doble que Premium)",
       "Victoria Hale desbloqueada",
       "30 imágenes por semana",
-      "Compra de créditos extra disponible",
+      `${VIP_IMAGE_CREDIT_DISCOUNT_PERCENT}% de descuento en créditos de imagen`,
     ],
+    accentFeatures: [`${VIP_IMAGE_CREDIT_DISCOUNT_PERCENT}% de descuento en créditos de imagen`],
     highlighted: false,
   },
 ];

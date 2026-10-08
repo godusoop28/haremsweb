@@ -163,12 +163,17 @@ export interface FreeMessageStatus {
   freeTrialApplies: boolean;
   canSendMessage: boolean;
   authenticated: boolean;
-  /** "VIP" si el personaje no entra en la prueba gratuita (Victoria) y exige ese plan; null en el resto. */
-  requiredPlan: "VIP" | null;
+  /**
+   * Plan que desbloquea al personaje cuando no está en la prueba gratuita y el plan actual no lo
+   * cubre: "VIP" (Victoria) o "PREMIUM" (resto fuera de la prueba). null si se puede chatear.
+   */
+  requiredPlan: "VIP" | "PREMIUM" | null;
 }
 
 /** Códigos de negocio que el backend manda en `code` y que el frontend interpreta. */
 export const FREE_MESSAGE_LIMIT_REACHED = "FREE_MESSAGE_LIMIT_REACHED";
+/** Usuario sin plan + personaje fuera de la prueba gratuita (solo Luna y Hana): mostrar CTA de planes. */
+export const FREE_CHARACTER_NOT_AVAILABLE = "FREE_CHARACTER_NOT_AVAILABLE";
 export const MONTHLY_MESSAGE_LIMIT_REACHED = "MONTHLY_MESSAGE_LIMIT_REACHED";
 export const AI_UNAVAILABLE = "AI_UNAVAILABLE";
 

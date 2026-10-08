@@ -9,13 +9,14 @@ import { downloadImage } from "@/lib/downloadImage";
 import LiveConnectionMeter from "@/components/LiveConnectionMeter";
 import PremiumBadge from "@/components/PremiumBadge";
 import UpgradeModal from "@/components/UpgradeModal";
-import { characters } from "@/lib/data";
+import { characters, FREE_TRIAL_NAMES_TEXT, VIP_IMAGE_CREDIT_DISCOUNT_PERCENT } from "@/lib/data";
 import { canAccessType } from "@/lib/access";
 import { useRemoteCharacters } from "@/lib/useCharacters";
 import {
   AI_UNAVAILABLE,
   api,
   ApiError,
+  FREE_CHARACTER_NOT_AVAILABLE,
   FREE_MESSAGE_LIMIT_REACHED,
   MONTHLY_MESSAGE_LIMIT_REACHED,
   relationshipStatusLabels,
@@ -286,8 +287,11 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   const freeStatus = freeStatuses[selectedId];
   const freeTrialActive = freeStatus?.freeTrialApplies === true;
   const freeExhausted = freeTrialActive && freeStatus.remaining <= 0;
-  // Exclusiva VIP (Victoria) sin plan VIP: no entra en la prueba gratuita.
-  const vipLocked = freeStatus?.requiredPlan === "VIP";
+  // Personaje fuera de la prueba gratuita (solo Luna y Hana) y sin plan que lo cubra: "VIP" para
+  // Victoria, "PREMIUM" para el resto. El backend lo bloquea igual (FREE_CHARACTER_NOT_AVAILABLE).
+  const requiredPlan = freeStatus?.requiredPlan ?? null;
+  const vipLocked = requiredPlan === "VIP";
+  const planLocked = requiredPlan !== null;
   const firstName = character.name.split(" ")[0];
 
   // ── Image generation capability ──────────────────────────────────────────────
@@ -307,7 +311,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   // ── Send chat message ────────────────────────────────────────────────────────
   async function sendMessage() {
     const trimmed = input.trim();
-    if (!trimmed || !token || isTyping || freeExhausted || vipLocked || sendingRef.current) return;
+    if (!trimmed || !token || isTyping || freeExhausted || planLocked || sendingRef.current) return;
     sendingRef.current = true;
 
     const charId = selectedId;
@@ -370,6 +374,13 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         trackEvent("free_messages_exhausted", { character_id: charId, character_name: character.name });
         return;
       }
+      if (err instanceof ApiError && err.code === FREE_CHARACTER_NOT_AVAILABLE) {
+        // Sin plan y fuera de la prueba: el compositor muestra el CTA de planes (sin popup).
+        restore();
+        const status = err.data?.freeUsage as FreeMessageStatus | undefined;
+        if (status) updateFreeStatus(status);
+        return;
+      }
       if (err instanceof ApiError && err.code === AI_UNAVAILABLE) {
         restore();
         appendMessage(charId, { from: "system", text: err.message });
@@ -390,7 +401,11 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           setUpgradeModal({
             title: "Límite mensual alcanzado",
             message: err.message,
-            benefits: ["2000 mensajes al mes (vs. 980 en Premium)", "Imágenes explícitas incluidas"],
+            benefits: [
+              "2000 mensajes al mes (vs. 980 en Premium)",
+              "Imágenes explícitas incluidas",
+              `${VIP_IMAGE_CREDIT_DISCOUNT_PERCENT}% de descuento en créditos de imagen`,
+            ],
             ctaLabel: "Mejorar a VIP",
           });
         } else {
@@ -562,18 +577,33 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   }
 
   function selectCharacter(id: string) {
-    // Quien no tiene un plan con acceso a este personaje lo prueba con sus mensajes gratis (el
-    // backend valida y cuenta; si se agotaron, el chat muestra el CTA). Las exclusivas VIP no
-    // entran en la prueba: se ofrece VIP como antes.
+    // Sin plan, solo las chicas de la prueba (Luna y Hana) se prueban con sus mensajes gratis (el
+    // backend valida y cuenta; si se agotaron, el chat muestra el CTA). El resto pide plan:
+    // Victoria el VIP como antes, las demás cualquier plan de pago.
     const remoteC = remoteCharacters.find((r) => r.slug === id);
     const status = freeStatuses[id];
     const needsVip = status ? status.requiredPlan === "VIP" : remoteC?.accessType === "VIP" && user?.plan !== "VIP";
+    const characterName = characters.find((ch) => ch.id === id)?.name ?? "Este personaje";
+    if (!needsVip && status?.requiredPlan) {
+      setUpgradeModal({
+        title: `${characterName.split(" ")[0]} está disponible con plan`,
+        message: `La prueba gratuita incluye a ${FREE_TRIAL_NAMES_TEXT}. Elige un plan para conversar con ${characterName.split(" ")[0]}.`,
+        benefits: ["16 personajes desbloqueados", "Hasta 2000 mensajes al mes con VIP", "Fotos de tus personajes"],
+        ctaLabel: "Ver planes",
+        ctaHref: "/planes",
+      });
+      return;
+    }
     if (needsVip) {
-      const characterName = characters.find((ch) => ch.id === id)?.name ?? "Este personaje";
       setUpgradeModal({
         title: `${characterName} es exclusiva VIP`,
         message: "Desbloquea el plan VIP para acceder al personaje más difícil e intenso del catálogo.",
-        benefits: [`Chat privado con ${characterName}`, "30 imágenes por semana", "Acceso a todos los personajes Premium"],
+        benefits: [
+          `Chat privado con ${characterName}`,
+          "30 imágenes por semana",
+          "Acceso a todos los personajes Premium",
+          `${VIP_IMAGE_CREDIT_DISCOUNT_PERCENT}% de descuento en créditos de imagen`,
+        ],
         ctaLabel: "Desbloquear VIP",
       });
       return;
@@ -966,25 +996,29 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           )}
 
           {/* Área D: chat normal — o, si la prueba gratuita con este personaje terminó, el CTA de planes. */}
-          {vipLocked ? (
+          {planLocked ? (
             <div className="rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/[0.08] via-transparent to-blue-600/[0.08] p-4 text-center sm:p-5">
-              <p className="text-base font-semibold text-white">{firstName} es exclusiva VIP</p>
+              <p className="text-base font-semibold text-white">
+                {vipLocked ? `${firstName} es exclusiva VIP` : `${firstName} está disponible con plan`}
+              </p>
               <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-slate-400">
-                Ella no forma parte de la prueba gratuita. Con el plan VIP puedes conversar con {firstName}.
+                {vipLocked
+                  ? `Ella no forma parte de la prueba gratuita. Con el plan VIP puedes conversar con ${firstName}.`
+                  : `La prueba gratuita incluye a ${FREE_TRIAL_NAMES_TEXT}. Elige un plan para conversar con ${firstName} y con todas las chicas.`}
               </p>
               <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
                 <Link
                   href="/planes"
                   onClick={() =>
                     trackEvent("plans_cta_clicked", {
-                      source: "vip_only_character",
+                      source: vipLocked ? "vip_only_character" : "not_in_free_trial",
                       character_id: selectedId,
                       character_name: character.name,
                     })
                   }
                   className="glow-button rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-6 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-[1.03]"
                 >
-                  Ver plan VIP
+                  {vipLocked ? "Ver plan VIP" : "Ver planes"}
                 </Link>
                 <Link
                   href="/personajes"

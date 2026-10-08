@@ -62,11 +62,13 @@ export function isTrialAvailable(status: FreeMessageStatus | undefined): boolean
 }
 
 /**
- * Texto corto para tarjetas/listados, o null si el plan da acceso completo a ese personaje o si
- * el personaje no entra en la prueba (exclusivas VIP como Victoria).
+ * Texto corto para tarjetas/listados, o null si el plan da acceso completo a ese personaje. Los
+ * personajes fuera de la prueba gratuita muestran qué hace falta para hablar con ellos.
  */
 export function freeTrialLabel(status: FreeMessageStatus | undefined): string | null {
-  if (!status || status.hasPaidAccess || status.requiredPlan) return null;
+  if (!status || status.hasPaidAccess) return null;
+  if (status.requiredPlan === "VIP") return "Exclusiva VIP";
+  if (status.requiredPlan) return "Disponible con plan";
   if (status.remaining <= 0) return "Prueba finalizada";
   if (status.used === 0) return `${status.limit} mensajes gratis`;
   return status.remaining === 1 ? "1 mensaje restante" : `${status.remaining} mensajes restantes`;

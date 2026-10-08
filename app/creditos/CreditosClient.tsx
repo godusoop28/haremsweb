@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError, type CreditBalanceResponse, type PricedCreditPackage } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { extraCreditPackages } from "@/lib/data";
+import { extraCreditPackages, VIP_IMAGE_CREDIT_DISCOUNT_PERCENT } from "@/lib/data";
 
 // Mientras carga el precio real desde backend, se muestra el precio de lista sin descuento (nunca
 // se asume VIP en el cliente) — evita pantalla en blanco, mismo patrón que PricingSection.tsx.
@@ -101,7 +101,7 @@ export default function CreditosClient() {
                     </span>
                   </div>
                   <p className="mt-1 text-2xl font-bold text-cyan-300">${pkg.finalPriceMxn} MXN</p>
-                  <p className="mt-1 text-xs font-medium text-amber-300">10% de descuento VIP</p>
+                  <p className="mt-1 text-xs font-medium text-amber-300">{VIP_IMAGE_CREDIT_DISCOUNT_PERCENT}% de descuento VIP</p>
                 </>
               ) : (
                 <p className="mt-4 text-2xl font-bold text-cyan-300">${pkg.finalPriceMxn} MXN</p>

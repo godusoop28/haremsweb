@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import CharacterBrowser from "@/components/CharacterBrowser";
 import { getMergedCharacters } from "@/lib/characters";
-import { FREE_MESSAGES_PER_CHARACTER } from "@/lib/data";
+import { FREE_MESSAGES_PER_CHARACTER, FREE_TRIAL_NAMES_TEXT } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "Personajes — HAREMS",
@@ -21,8 +21,8 @@ export default async function PersonajesPage() {
             Elige a tu <span className="text-gradient">compañera ideal</span>
           </h1>
           <p className="mt-4 text-slate-400">
-            Crea tu cuenta gratis y prueba a cada chica con {FREE_MESSAGES_PER_CHARACTER} mensajes
-            (Victoria es exclusiva VIP). Con Premium o VIP sigues la conversación y desbloqueas sus fotos.
+            Crea tu cuenta gratis y prueba a {FREE_TRIAL_NAMES_TEXT} con {FREE_MESSAGES_PER_CHARACTER} mensajes
+            cada una. Con un plan conversas con todas las chicas y desbloqueas sus fotos.
           </p>
         </div>
 

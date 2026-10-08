@@ -15,7 +15,8 @@ export default function CharacterCard({ character }: { character: Character }) {
   const comingSoon = character.comingSoon === true;
   const { statuses } = useFreeMessages();
   const locked = !canAccessLabel(user?.plan, character.access);
-  // Prueba gratuita por personaje: sin plan con acceso, cada chica (salvo las VIP) se prueba con N mensajes.
+  // Prueba gratuita: sin plan, solo las chicas de la prueba (Luna y Hana) se prueban con N mensajes;
+  // el resto muestra "Disponible con plan" y lleva a /planes.
   const trialStatus = comingSoon ? undefined : statuses[character.id];
   const trialLabel = freeTrialLabel(trialStatus);
   const trialAvailable = isTrialAvailable(trialStatus);

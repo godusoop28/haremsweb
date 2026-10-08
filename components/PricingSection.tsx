@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { plans, TRIAL_PLAN_ENABLED } from "@/lib/data";
+import { FREE_TRIAL_NAMES_TEXT, plans, TRIAL_PLAN_ENABLED } from "@/lib/data";
 import { api, ApiError, type PlanType } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
@@ -77,7 +77,7 @@ export default function PricingSection() {
             Planes para <span className="text-gradient">cada experiencia</span>
           </h2>
           <p className="mt-3 text-slate-400">
-            Prueba gratis a cada chica y elige un plan cuando quieras seguir la conversación.
+            Prueba gratis a {FREE_TRIAL_NAMES_TEXT} y elige un plan cuando quieras conocer a todas.
           </p>
         </div>
 
@@ -136,10 +136,15 @@ export default function PricingSection() {
                 <p className="mt-3 text-sm text-slate-400">{plan.description}</p>
 
                 <ul className="mt-6 flex-1 space-y-3">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2 text-sm text-slate-300">
+                  {plan.features.map((feature) => {
+                    const accent = plan.accentFeatures?.includes(feature) ?? false;
+                    return (
+                    <li
+                      key={feature}
+                      className={`flex items-start gap-2 text-sm ${accent ? "font-semibold text-amber-200" : "text-slate-300"}`}
+                    >
                       <svg
-                        className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400"
+                        className={`mt-0.5 h-4 w-4 shrink-0 ${accent ? "text-amber-300" : "text-cyan-400"}`}
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -149,7 +154,8 @@ export default function PricingSection() {
                       </svg>
                       {feature}
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
 
                 {isFreePlan ? (
