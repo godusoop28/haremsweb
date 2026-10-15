@@ -2,15 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import {
-  api,
-  ApiError,
-  type AdminConversationResponse,
-  type AdminUserResponse,
-  type MessageResponse,
-  type PlanType,
-  type Role,
-} from "@/lib/api";
+import { api, ApiError, type AdminUserResponse, type PlanType, type Role } from "@/lib/api";
 
 const planLabels: Record<PlanType, string> = {
   FREE: "Gratis",
@@ -117,141 +109,12 @@ function CreateAdminForm({ onCreated }: { onCreated: () => void }) {
   );
 }
 
-function UserChatsModal({ user, onClose }: { user: AdminUserResponse; onClose: () => void }) {
-  const { token } = useAuth();
-  const [conversations, setConversations] = useState<AdminConversationResponse[] | null>(null);
-  const [selected, setSelected] = useState<AdminConversationResponse | null>(null);
-  const [messages, setMessages] = useState<MessageResponse[] | null>(null);
-  const [filter, setFilter] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!token) return;
-    api
-      .getAdminUserConversations(token, user.id)
-      .then((list) => {
-        setConversations(list);
-        if (list.length > 0) setSelected(list[0]);
-      })
-      .catch((err) => setError(err instanceof ApiError ? err.message : "No se pudieron cargar los chats."));
-  }, [token, user.id]);
-
-  useEffect(() => {
-    if (!token || !selected) return;
-    setMessages(null);
-    api
-      .getAdminConversationMessages(token, selected.id)
-      .then(setMessages)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "No se pudieron cargar los mensajes."));
-  }, [token, selected]);
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  const visibleMessages = useMemo(() => {
-    const q = filter.trim().toLowerCase();
-    if (!messages || !q) return messages;
-    return messages.filter((m) => m.content.toLowerCase().includes(q));
-  }, [messages, filter]);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div
-        className="glass flex h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between gap-3 border-b border-white/10 p-4">
-          <div>
-            <p className="font-semibold text-white">Chats de {user.name}</p>
-            <p className="text-xs text-slate-500">{user.email} · solo lectura (moderación)</p>
-          </div>
-          <button onClick={onClose} className="rounded-full border border-white/10 px-4 py-1.5 text-sm text-slate-300">
-            Cerrar
-          </button>
-        </div>
-
-        {error && <p className="px-4 pt-3 text-sm text-rose-400">{error}</p>}
-
-        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-          <aside className="max-h-40 shrink-0 overflow-y-auto border-b border-white/10 md:max-h-none md:w-60 md:border-b-0 md:border-r">
-            {conversations === null && <p className="p-4 text-sm text-slate-400">Cargando…</p>}
-            {conversations?.length === 0 && <p className="p-4 text-sm text-slate-400">Este usuario no tiene chats.</p>}
-            {conversations?.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setSelected(c)}
-                className={`block w-full border-b border-white/5 p-3 text-left text-sm transition-colors ${
-                  selected?.id === c.id ? "bg-cyan-400/10 text-white" : "text-slate-300 hover:bg-white/5"
-                }`}
-              >
-                <p className="font-medium">{c.characterName}</p>
-                <p className="text-xs text-slate-500">
-                  {c.messageCount} mensajes · {new Date(c.updatedAt).toLocaleDateString("es-MX")}
-                </p>
-              </button>
-            ))}
-          </aside>
-
-          <section className="flex min-h-0 flex-1 flex-col">
-            {selected && (
-              <div className="border-b border-white/10 p-3">
-                <input
-                  placeholder="Buscar en este chat…"
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 p-2 text-sm text-white focus:border-cyan-400/50 focus:outline-none"
-                />
-              </div>
-            )}
-            <div className="flex-1 space-y-3 overflow-y-auto p-4">
-              {selected && visibleMessages === null && <p className="text-sm text-slate-400">Cargando mensajes…</p>}
-              {visibleMessages?.length === 0 && (
-                <p className="text-sm text-slate-400">{filter ? "Ningún mensaje coincide." : "Sin mensajes."}</p>
-              )}
-              {visibleMessages?.map((m) => {
-                const isUser = m.sender === "USER";
-                return (
-                  <div key={m.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-                    <div
-                      className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${
-                        isUser ? "bg-cyan-500/20 text-white" : "bg-white/5 text-slate-200"
-                      }`}
-                    >
-                      <p className="mb-1 text-[10px] uppercase tracking-wide text-slate-500">
-                        {isUser ? user.name : selected?.characterName} · {new Date(m.createdAt).toLocaleString("es-MX")}
-                        {m.messageType !== "TEXT" && ` · ${m.messageType}`}
-                      </p>
-                      {m.content && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
-                      {m.imageUrl && (
-                        <a href={m.imageUrl} target="_blank" rel="noreferrer">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={m.imageUrl} alt="Imagen generada" className="mt-2 max-h-64 rounded-lg" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function AdminUsersPage() {
   const { user: currentUser, token } = useAuth();
   const [users, setUsers] = useState<AdminUserResponse[]>([]);
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
-  const [chatsUser, setChatsUser] = useState<AdminUserResponse | null>(null);
 
   function loadUsers() {
     if (!token) return;
@@ -403,13 +266,7 @@ export default function AdminUsersPage() {
                   <td className="p-3 text-xs text-slate-500">
                     {new Date(u.createdAt).toLocaleDateString("es-MX")}
                   </td>
-                  <td className="space-x-3 whitespace-nowrap p-3 text-right">
-                    <button
-                      onClick={() => setChatsUser(u)}
-                      className="text-xs text-cyan-300 underline underline-offset-2 hover:text-cyan-200"
-                    >
-                      Ver chats
-                    </button>
+                  <td className="p-3 text-right">
                     <button
                       disabled={disabled || isSelf || !u.active}
                       onClick={() => handleDelete(u.id, u.email)}
@@ -431,8 +288,6 @@ export default function AdminUsersPage() {
           </tbody>
         </table>
       </div>
-
-      {chatsUser && <UserChatsModal user={chatsUser} onClose={() => setChatsUser(null)} />}
     </div>
   );
 }
