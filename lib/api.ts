@@ -764,6 +764,14 @@ export const api = {
     return request<AdminConversationResponse[]>("/admin/conversations", { token });
   },
 
+  getAdminUserConversations(token: string, userId: number) {
+    return request<AdminConversationResponse[]>(`/admin/users/${userId}/conversations`, { token });
+  },
+
+  getAdminConversationMessages(token: string, conversationId: number) {
+    return request<MessageResponse[]>(`/admin/conversations/${conversationId}/messages`, { token });
+  },
+
   getAdminImageGenerations(token: string) {
     return request<AdminImageGenerationResponse[]>("/admin/image-generations", { token });
   },
