@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { characters } from "@/lib/data";
+import { characterPhotos, characters } from "@/lib/data";
 import { getMergedCharacter } from "@/lib/characters";
 import ConnectionMeter from "@/components/ConnectionMeter";
+import PhotoGallery from "@/components/PhotoGallery";
 import PremiumBadge from "@/components/PremiumBadge";
 import CharacterDetailActions from "@/components/CharacterDetailActions";
 
@@ -47,22 +47,22 @@ export default async function CharacterDetailPage({
         </Link>
 
         <div className="mt-6 grid gap-8 lg:grid-cols-[380px_1fr]">
-          <div className="glass relative aspect-[3/4] w-full overflow-hidden rounded-2xl">
-            <Image
-              src={character.image}
-              alt={character.name}
-              fill
-              sizes="(max-width: 1024px) 100vw, 380px"
-              className="object-cover object-[center_10%]"
-              priority
-            />
+          <PhotoGallery
+            photos={characterPhotos(character)}
+            alt={character.name}
+            sizes="(max-width: 1024px) 100vw, 380px"
+            frameClassName="glass relative aspect-[3/4] w-full overflow-hidden rounded-2xl"
+            imageClassName="object-[center_10%]"
+            priority
+            showThumbnails
+          >
             <div className="absolute inset-0 bg-gradient-to-t from-[#03050b] via-transparent to-transparent" />
             <PremiumBadge
               access={character.access}
               isPremium={character.isPremium}
               className="absolute right-4 top-4"
             />
-          </div>
+          </PhotoGallery>
 
           <div className="flex flex-col">
             <h1 className="text-3xl font-bold text-white sm:text-4xl">{character.name}</h1>

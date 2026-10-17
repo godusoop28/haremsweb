@@ -15,6 +15,8 @@ export interface Character {
   access: Access;
   difficulty: string;
   image: string;
+  /** Fotos adicionales de la galería (la principal sigue siendo `image`). */
+  gallery?: string[];
   concept: string;
   appearance: string;
   personality: string;
@@ -35,6 +37,11 @@ export interface Character {
   dislikes: string[];
 }
 
+/** Foto principal seguida de las de la galería (si tiene). */
+export function characterPhotos(character: Character): string[] {
+  return [character.image, ...(character.gallery ?? [])];
+}
+
 export const characters: Character[] = [
   {
     id: "luna-valmont",
@@ -44,6 +51,7 @@ export const characters: Character[] = [
     access: "Gratis",
     difficulty: "Fácil",
     image: "/personajes/luna-valmont.jpeg",
+    gallery: ["/personajes/galeria/luna-valmont-2.jpg", "/personajes/galeria/luna-valmont-3.jpg"],
     concept:
       "Luna Valmont funciona como una chica dulce, coqueta, luminosa y fácil de recordar dentro del catálogo. Es ideal para introducir al usuario al sistema de conquista.",
     appearance:
@@ -82,6 +90,7 @@ export const characters: Character[] = [
     access: "Gratis",
     difficulty: "Fácil / Media",
     image: "/personajes/hana-mori.jpeg",
+    gallery: ["/personajes/galeria/hana-mori-2.jpg", "/personajes/galeria/hana-mori-3.jpg"],
     concept:
       "Hana Mori es una chica divertida, juvenil, energética y fácil de recordar. Debe sentirse como una personalidad alegre dentro del catálogo.",
     appearance:
@@ -120,6 +129,7 @@ export const characters: Character[] = [
     access: "Premium",
     difficulty: "Alta",
     image: "/personajes/aurora-sterling.jpeg",
+    gallery: ["/personajes/galeria/aurora-sterling-2.jpg", "/personajes/galeria/aurora-sterling-3.jpg"],
     concept:
       "Aurora Sterling representa elegancia, clase y distancia emocional. Es una chica sofisticada, refinada y difícil de impresionar.",
     appearance:
@@ -158,6 +168,7 @@ export const characters: Character[] = [
     access: "Premium",
     difficulty: "Media",
     image: "/personajes/valeria-cruz.jpeg",
+    gallery: ["/personajes/galeria/valeria-cruz-2.jpg", "/personajes/galeria/valeria-cruz-3.jpg"],
     concept:
       "Valeria Cruz es una latina segura, alegre y magnética. Debe sentirse intensa, carismática y con mucha presencia.",
     appearance:
@@ -196,6 +207,7 @@ export const characters: Character[] = [
     access: "Premium",
     difficulty: "Alta",
     image: "/personajes/camila-rios.jpeg",
+    gallery: ["/personajes/galeria/camila-rios-2.jpg", "/personajes/galeria/camila-rios-3.jpg"],
     concept:
       "Camila Ríos es una chica intelectual, enfocada y difícil de distraer. Su atractivo está en la mezcla de inteligencia, sencillez y presencia.",
     appearance:
@@ -234,6 +246,7 @@ export const characters: Character[] = [
     access: "Premium",
     difficulty: "Media",
     image: "/personajes/kiara-blake.jpeg",
+    gallery: ["/personajes/galeria/kiara-blake-2.jpg", "/personajes/galeria/kiara-blake-3.jpg"],
     concept:
       "Kiara Blake es una gamer competitiva con estética e-girl. Debe sentirse rebelde, juguetona, sarcástica y moderna.",
     appearance:
@@ -272,6 +285,7 @@ export const characters: Character[] = [
     access: "Premium",
     difficulty: "Alta",
     image: "/personajes/isabella-laurent.jpeg",
+    gallery: ["/personajes/galeria/isabella-laurent-2.jpg", "/personajes/galeria/isabella-laurent-3.jpg"],
     concept:
       "Isabella Laurent es una doctora madura, elegante y sofisticada. Combina autoridad, calma y sensualidad segura.",
     appearance:
@@ -310,6 +324,7 @@ export const characters: Character[] = [
     access: "Premium",
     difficulty: "Muy alta",
     image: "/personajes/nara-voss.jpeg",
+    gallery: ["/personajes/galeria/nara-voss-2.jpg", "/personajes/galeria/nara-voss-3.jpg"],
     concept:
       "Nara Voss es una chica misteriosa, alternativa, gótica y difícil de leer. Debe sentirse magnética, silenciosa y emocionalmente profunda.",
     appearance:
@@ -347,6 +362,7 @@ export const characters: Character[] = [
     access: "Premium",
     difficulty: "Media / Fácil",
     image: "/personajes/sasha-monroe.jpeg",
+    gallery: ["/personajes/galeria/sasha-monroe-2.jpg", "/personajes/galeria/sasha-monroe-3.jpg"],
     concept:
       "Sasha Monroe es una rubia extrovertida, fitness, social y energética. Debe sentirse activa, segura y positiva.",
     appearance:
@@ -384,6 +400,7 @@ export const characters: Character[] = [
     access: "Premium",
     difficulty: "Media",
     image: "/personajes/mei-tanaka.jpeg",
+    gallery: ["/personajes/galeria/mei-tanaka-2.jpg", "/personajes/galeria/mei-tanaka-3.jpg"],
     concept:
       "Mei Tanaka es una chica tímida, dulce y reservada. Debe sentirse tierna, sensible y emocionalmente protegida.",
     appearance:
@@ -422,6 +439,7 @@ export const characters: Character[] = [
     access: "Premium",
     difficulty: "Media / Alta",
     image: "/personajes/renata-soler.jpeg",
+    gallery: ["/personajes/galeria/renata-soler-2.jpg", "/personajes/galeria/renata-soler-3.jpg"],
     concept:
       "Renata Soler es una chica libre, segura, andrógina y difícil de encasillar. Debe transmitir independencia y magnetismo.",
     appearance:
@@ -459,6 +477,7 @@ export const characters: Character[] = [
     access: "Premium / VIP",
     difficulty: "Extrema",
     image: "/personajes/victoria-hale.jpeg",
+    gallery: ["/personajes/galeria/victoria-hale-2.jpg", "/personajes/galeria/victoria-hale-3.jpg"],
     concept:
       "Victoria Hale es una mujer sofisticada, emocionalmente compleja y difícil de alcanzar. Debe sentirse como el personaje más intenso y narrativo del catálogo.",
     appearance:
@@ -496,6 +515,7 @@ export const characters: Character[] = [
     access: "Premium",
     difficulty: "Alta",
     image: "/personajes/scarlett-moreau.png",
+    gallery: ["/personajes/galeria/scarlett-moreau-2.jpg", "/personajes/galeria/scarlett-moreau-3.jpg"],
     concept:
       "Scarlett Moreau es una mujer elegante, intensa y sofisticada, con estética de bar de jazz, lujo nocturno y romance peligroso.",
     appearance:
@@ -610,6 +630,7 @@ export const characters: Character[] = [
     access: "Premium",
     difficulty: "Media / Alta",
     image: "/personajes/elena-frost.png",
+    gallery: ["/personajes/galeria/elena-frost-2.jpg", "/personajes/galeria/elena-frost-3.jpg"],
     concept:
       "Elena Frost es una tenista de élite con cabello morado, piernas atléticas largas y estética deportiva premium nocturna.",
     appearance:

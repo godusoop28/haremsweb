@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import type { Character } from "@/lib/data";
+import { characterPhotos, type Character } from "@/lib/data";
 import { canAccessLabel } from "@/lib/access";
 import { useAuth } from "@/lib/auth-context";
 import { freeTrialLabel, isTrialAvailable, useFreeMessages } from "@/lib/useFreeMessages";
+import PhotoGallery from "./PhotoGallery";
 import PremiumBadge from "./PremiumBadge";
 
 const MAX_VISIBLE_TAGS = 3;
@@ -23,17 +23,19 @@ export default function CharacterCard({ character }: { character: Character }) {
   const canChat = !locked || trialAvailable;
   const visibleTags = character.tags.slice(0, MAX_VISIBLE_TAGS);
   const extraTagCount = character.tags.length - visibleTags.length;
+  const photos = characterPhotos(character);
 
   return (
     <div className="glass group flex flex-col overflow-hidden rounded-2xl transition-all duration-200 hover:-translate-y-0.5 hover:border-white/15">
-      <Link href={`/personajes/${character.id}`} className="relative block aspect-[3/4] w-full overflow-hidden">
-        <Image
-          src={character.image}
-          alt={character.name}
-          fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-          className="object-cover object-[center_12%] transition-transform duration-300 group-hover:scale-[1.015]"
-        />
+      <PhotoGallery
+        photos={photos}
+        alt={character.name}
+        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+        frameClassName="relative block aspect-[3/4] w-full overflow-hidden"
+        imageClassName="object-[center_12%] transition-transform duration-300 group-hover:scale-[1.015]"
+        href={`/personajes/${character.id}`}
+        hrefLabel={`Ver perfil de ${character.name}`}
+      >
         <div className="absolute inset-0 bg-gradient-to-t from-[#03050b] via-[#03050b]/25 to-transparent" />
 
         <PremiumBadge
@@ -72,11 +74,11 @@ export default function CharacterCard({ character }: { character: Character }) {
           </div>
         )}
 
-        <div className="absolute inset-x-0 bottom-0 p-4">
+        <div className={`absolute inset-x-0 bottom-0 p-4 ${photos.length > 1 ? "pr-14" : ""}`}>
           <h3 className="text-base font-semibold text-white">{character.name}</h3>
           <p className="mt-0.5 text-xs font-medium text-cyan-300">{character.archetype}</p>
         </div>
-      </Link>
+      </PhotoGallery>
 
       <div className="flex flex-1 flex-col gap-3 border-t border-white/5 p-4">
         <p className="text-xs text-slate-500">
