@@ -746,7 +746,7 @@ export const plans: Plan[] = [
     description: "Acceso mensual Premium a HAREMS con personajes premium.",
     features: [
       "16 personajes desbloqueados",
-      "980 mensajes al mes (todas las chicas)",
+      "Hasta 980 mensajes mensuales (todas las chicas)",
       "15 imágenes por semana",
       "Imágenes Normal y Sin ropa",
       "Compra de créditos extra disponible",
@@ -762,7 +762,7 @@ export const plans: Plan[] = [
     description: "Lo máximo. Incluye Victoria Hale y más imágenes por semana.",
     features: [
       "Todo lo de Premium incluido",
-      "2000 mensajes al mes (más del doble que Premium)",
+      "Hasta 2000 mensajes mensuales (más del doble que Premium)",
       "Victoria Hale desbloqueada",
       "30 imágenes por semana",
       `${VIP_IMAGE_CREDIT_DISCOUNT_PERCENT}% de descuento en créditos de imagen`,

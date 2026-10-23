@@ -18,7 +18,7 @@ export default function PlanesPage() {
         </h1>
         <p className="mt-4 text-slate-400">
           Gratis tienes {FREE_MESSAGES_PER_CHARACTER} mensajes con {FREE_TRIAL_NAMES_TEXT} cada una. Con un
-          plan conversas con todas las chicas, les pides fotos y tienes hasta 2000 mensajes al mes con VIP.
+          plan conversas con todas las chicas, les pides fotos y tienes hasta 2000 mensajes mensuales con VIP.
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-sm text-slate-400">
           <span className="flex items-center gap-1.5">

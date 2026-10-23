@@ -402,7 +402,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
             title: "Límite mensual alcanzado",
             message: err.message,
             benefits: [
-              "2000 mensajes al mes (vs. 980 en Premium)",
+              "Hasta 2000 mensajes mensuales (vs. 980 en Premium)",
               "Imágenes explícitas incluidas",
               `${VIP_IMAGE_CREDIT_DISCOUNT_PERCENT}% de descuento en créditos de imagen`,
             ],
@@ -588,7 +588,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
       setUpgradeModal({
         title: `${characterName.split(" ")[0]} está disponible con plan`,
         message: `La prueba gratuita incluye a ${FREE_TRIAL_NAMES_TEXT}. Elige un plan para conversar con ${characterName.split(" ")[0]}.`,
-        benefits: ["16 personajes desbloqueados", "Hasta 2000 mensajes al mes con VIP", "Fotos de tus personajes"],
+        benefits: ["16 personajes desbloqueados", "Hasta 2000 mensajes mensuales con VIP", "Fotos de tus personajes"],
         ctaLabel: "Ver planes",
         ctaHref: "/planes",
       });
