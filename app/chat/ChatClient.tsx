@@ -8,6 +8,7 @@ import GeneratedImage, { daysUntilExpiration } from "@/components/GeneratedImage
 import { downloadImage } from "@/lib/downloadImage";
 import LiveConnectionMeter from "@/components/LiveConnectionMeter";
 import PremiumBadge from "@/components/PremiumBadge";
+import RoleplayText from "@/components/RoleplayText";
 import UpgradeModal from "@/components/UpgradeModal";
 import { characters, FREE_TRIAL_NAMES_TEXT, VIP_IMAGE_CREDIT_DISCOUNT_PERCENT } from "@/lib/data";
 import { canAccessType } from "@/lib/access";
@@ -796,7 +797,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
                     <div className="mr-2 hidden w-10 shrink-0 sm:block" aria-hidden="true" />
                   ))}
                 <div
-                  className={`max-w-[85%] whitespace-pre-wrap break-words rounded-2xl text-sm leading-relaxed shadow-lg sm:max-w-[65%] ${
+                  className={`max-w-[85%] break-words rounded-2xl text-sm leading-relaxed shadow-lg sm:max-w-[65%] ${
                     message.imageUrl ? "overflow-hidden p-1.5" : "px-4 py-2.5"
                   } ${
                     message.from === "user"
@@ -852,7 +853,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
                       </div>
                     </>
                   ) : (
-                    message.text
+                    <RoleplayText text={message.text} variant={message.from === "user" ? "user" : "ai"} />
                   )}
                 </div>
               </div>
