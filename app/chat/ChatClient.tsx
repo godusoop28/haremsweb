@@ -9,6 +9,7 @@ import { downloadImage } from "@/lib/downloadImage";
 import LiveConnectionMeter from "@/components/LiveConnectionMeter";
 import PremiumBadge from "@/components/PremiumBadge";
 import RoleplayText from "@/components/RoleplayText";
+import CopyMessageButton from "@/components/CopyMessageButton";
 import UpgradeModal from "@/components/UpgradeModal";
 import { characters, FREE_TRIAL_NAMES_TEXT, VIP_IMAGE_CREDIT_DISCOUNT_PERCENT } from "@/lib/data";
 import { canAccessType } from "@/lib/access";
@@ -788,20 +789,52 @@ export default function ChatClient({ initialId }: { initialId: string }) {
             const previous = messages[idx - 1];
             const isFirstInGroup = !previous || previous.from !== message.from;
 
+            // Mensaje de texto de la chica: tarjeta ancha estilo novela (avatar arriba a la
+            // izquierda, acciones en cursiva y diálogo aparte, copiar y hora en la tarjeta).
+            if (message.from === "ai" && !message.imageUrl) {
+              return (
+                <div key={idx} className={`flex items-start gap-2.5 ${isFirstInGroup ? "" : "-mt-1"}`}>
+                  {isFirstInGroup ? (
+                    <Avatar name={character.name} image={character.image} size="sm" className="mt-1 shrink-0" />
+                  ) : (
+                    <div className="w-10 shrink-0" aria-hidden="true" />
+                  )}
+                  <div className="group min-w-0 max-w-[calc(100%-3rem)] flex-1 sm:max-w-[680px]">
+                    <div className="relative rounded-2xl border border-white/[0.07] bg-slate-800/50 px-4 pb-2.5 pt-3.5 text-[15px] leading-7 shadow-lg backdrop-blur-md sm:px-5 sm:pt-4">
+                      <div className="absolute right-2 top-2 opacity-60 transition-opacity group-hover:opacity-100">
+                        <CopyMessageButton text={message.text} />
+                      </div>
+                      <div className="break-words pr-6">
+                        <RoleplayText text={message.text} />
+                      </div>
+                      {message.createdAt && (
+                        <div className="mt-2 text-right text-[10px] text-slate-500">
+                          {new Date(message.createdAt).toLocaleTimeString("es-MX", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
             return (
-              <div key={idx} className={`flex ${message.from === "user" ? "justify-end" : "justify-start"}`}>
+              <div key={idx} className={`flex items-start ${message.from === "user" ? "justify-end" : "justify-start"}`}>
                 {message.from === "ai" &&
                   (isFirstInGroup ? (
-                    <Avatar name={character.name} image={character.image} size="sm" className="mr-2 mt-auto hidden sm:block" />
+                    <Avatar name={character.name} image={character.image} size="sm" className="mr-2.5 mt-1" />
                   ) : (
-                    <div className="mr-2 hidden w-10 shrink-0 sm:block" aria-hidden="true" />
+                    <div className="mr-2.5 w-10 shrink-0" aria-hidden="true" />
                   ))}
                 <div
                   className={`max-w-[85%] break-words rounded-2xl text-sm leading-relaxed shadow-lg sm:max-w-[65%] ${
                     message.imageUrl ? "overflow-hidden p-1.5" : "px-4 py-2.5"
                   } ${
                     message.from === "user"
-                      ? "border border-cyan-400/30 bg-cyan-950/60 text-cyan-50"
+                      ? "rounded-br-md border border-cyan-400/30 bg-cyan-950/60 text-[15px] text-cyan-50"
                       : message.imageUrl
                         ? "border border-cyan-400/20 bg-slate-900/70 text-slate-200 backdrop-blur-md"
                         : "border border-white/5 bg-slate-900/70 text-slate-200 backdrop-blur-md"
@@ -861,9 +894,9 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           })}
 
           {isTyping && (
-            <div className="flex justify-start">
-              <Avatar name={character.name} image={character.image} size="sm" className="mr-2 mt-auto hidden sm:block" />
-              <div className="flex items-center gap-1 rounded-2xl border border-white/5 bg-slate-900/70 px-4 py-3 backdrop-blur-md">
+            <div className="flex items-start gap-2.5">
+              <Avatar name={character.name} image={character.image} size="sm" className="mt-1 shrink-0" />
+              <div className="flex items-center gap-1 rounded-2xl border border-white/[0.07] bg-slate-800/50 px-4 py-3.5 backdrop-blur-md">
                 <span className="h-1.5 w-1.5 animate-pulse-glow rounded-full bg-cyan-400" />
                 <span className="h-1.5 w-1.5 animate-pulse-glow rounded-full bg-cyan-400 [animation-delay:0.2s]" />
                 <span className="h-1.5 w-1.5 animate-pulse-glow rounded-full bg-cyan-400 [animation-delay:0.4s]" />
