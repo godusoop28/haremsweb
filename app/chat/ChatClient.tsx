@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Crown, ImagePlus, SendHorizontal, UserRound, Users } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import GeneratedImage, { daysUntilExpiration } from "@/components/GeneratedImage";
@@ -9,7 +10,7 @@ import { downloadImage } from "@/lib/downloadImage";
 import LiveConnectionMeter from "@/components/LiveConnectionMeter";
 import PremiumBadge from "@/components/PremiumBadge";
 import RoleplayText from "@/components/RoleplayText";
-import CopyMessageButton from "@/components/CopyMessageButton";
+import AiMessageCard from "@/components/AiMessageCard";
 import UpgradeModal from "@/components/UpgradeModal";
 import { characters, FREE_TRIAL_NAMES_TEXT, VIP_IMAGE_CREDIT_DISCOUNT_PERCENT } from "@/lib/data";
 import { canAccessType } from "@/lib/access";
@@ -311,8 +312,8 @@ export default function ChatClient({ initialId }: { initialId: string }) {
   }
 
   // ── Send chat message ────────────────────────────────────────────────────────
-  async function sendMessage() {
-    const trimmed = input.trim();
+  async function sendMessage(override?: string) {
+    const trimmed = (override ?? input).trim();
     if (!trimmed || !token || isTyping || freeExhausted || planLocked || sendingRef.current) return;
     sendingRef.current = true;
 
@@ -324,7 +325,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
     }
 
     appendMessage(charId, { from: "user", text: trimmed, clientId: clientMessageId });
-    setInput("");
+    if (override === undefined) setInput("");
     setIsTyping(true);
 
     try {
@@ -720,7 +721,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
 
       <div className="flex min-h-0 flex-1 flex-col">
         {/* Header */}
-        <div className="glass-strong shrink-0 border-b border-white/5 px-3 py-2.5 sm:px-6 sm:py-3">
+        <div className="shrink-0 border-b border-white/[0.06] bg-black/50 px-3 py-2.5 backdrop-blur-xl sm:px-6 sm:py-3">
           <div className="flex items-center gap-2.5 sm:gap-3">
             <Avatar name={character.name} image={character.image} size="md" className="sm:h-16 sm:w-16" />
             <div className="min-w-0 flex-1">
@@ -761,7 +762,7 @@ export default function ChatClient({ initialId }: { initialId: string }) {
         {/* Messages */}
         <div
           ref={scrollRef}
-          className="scroll-neon min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 py-4 sm:px-6 sm:py-6"
+          className="scroll-neon min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 sm:px-8 sm:py-6"
         >
           {messages.map((message, idx) => {
             if (message.from === "system" || message.from === "levelup") {
@@ -789,35 +790,24 @@ export default function ChatClient({ initialId }: { initialId: string }) {
             const previous = messages[idx - 1];
             const isFirstInGroup = !previous || previous.from !== message.from;
 
-            // Mensaje de texto de la chica: tarjeta ancha estilo novela (avatar arriba a la
-            // izquierda, acciones en cursiva y diálogo aparte, copiar y hora en la tarjeta).
+            // Mensaje de texto de la chica: tarjeta ancha estilo novela (ver AiMessageCard).
             if (message.from === "ai" && !message.imageUrl) {
+              const isLastMessage = idx === messages.length - 1;
               return (
-                <div key={idx} className={`flex items-start gap-2.5 ${isFirstInGroup ? "" : "-mt-1"}`}>
-                  {isFirstInGroup ? (
-                    <Avatar name={character.name} image={character.image} size="sm" className="mt-1 shrink-0" />
-                  ) : (
-                    <div className="w-10 shrink-0" aria-hidden="true" />
-                  )}
-                  <div className="group min-w-0 max-w-[calc(100%-3rem)] flex-1 sm:max-w-[680px]">
-                    <div className="relative rounded-2xl border border-white/[0.07] bg-slate-800/50 px-4 pb-2.5 pt-3.5 text-[15px] leading-7 shadow-lg backdrop-blur-md sm:px-5 sm:pt-4">
-                      <div className="absolute right-2 top-2 opacity-60 transition-opacity group-hover:opacity-100">
-                        <CopyMessageButton text={message.text} />
-                      </div>
-                      <div className="break-words pr-6">
-                        <RoleplayText text={message.text} />
-                      </div>
-                      {message.createdAt && (
-                        <div className="mt-2 text-right text-[10px] text-slate-500">
-                          {new Date(message.createdAt).toLocaleTimeString("es-MX", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <AiMessageCard
+                  key={idx}
+                  text={message.text}
+                  createdAt={message.createdAt}
+                  characterId={character.id}
+                  characterName={character.name}
+                  characterImage={character.image}
+                  showAvatar={isFirstInGroup}
+                  onContinue={
+                    isLastMessage && !isTyping && !freeExhausted && !planLocked
+                      ? () => sendMessage("*Continúa*")
+                      : undefined
+                  }
+                />
               );
             }
 
@@ -830,14 +820,14 @@ export default function ChatClient({ initialId }: { initialId: string }) {
                     <div className="mr-2.5 w-10 shrink-0" aria-hidden="true" />
                   ))}
                 <div
-                  className={`max-w-[85%] break-words rounded-2xl text-sm leading-relaxed shadow-lg sm:max-w-[65%] ${
-                    message.imageUrl ? "overflow-hidden p-1.5" : "px-4 py-2.5"
+                  className={`max-w-[85%] break-words rounded-[20px] text-sm leading-relaxed shadow-lg sm:max-w-[65%] ${
+                    message.imageUrl ? "overflow-hidden p-1.5" : "px-4 py-3 leading-[1.7]"
                   } ${
                     message.from === "user"
-                      ? "rounded-br-md border border-cyan-400/30 bg-cyan-950/60 text-[15px] text-cyan-50"
+                      ? "rounded-br-md bg-[#3a3a40] text-[16px] text-white"
                       : message.imageUrl
-                        ? "border border-cyan-400/20 bg-slate-900/70 text-slate-200 backdrop-blur-md"
-                        : "border border-white/5 bg-slate-900/70 text-slate-200 backdrop-blur-md"
+                        ? "bg-[#2a2a2e] text-zinc-200"
+                        : "bg-[#2a2a2e] text-zinc-200"
                   }`}
                 >
                   {message.imageUrl ? (
@@ -894,32 +884,24 @@ export default function ChatClient({ initialId }: { initialId: string }) {
           })}
 
           {isTyping && (
-            <div className="flex items-start gap-2.5">
+            <div className="flex items-start gap-2.5 pt-3 sm:gap-3">
               <Avatar name={character.name} image={character.image} size="sm" className="mt-1 shrink-0" />
-              <div className="flex items-center gap-1 rounded-2xl border border-white/[0.07] bg-slate-800/50 px-4 py-3.5 backdrop-blur-md">
-                <span className="h-1.5 w-1.5 animate-pulse-glow rounded-full bg-cyan-400" />
-                <span className="h-1.5 w-1.5 animate-pulse-glow rounded-full bg-cyan-400 [animation-delay:0.2s]" />
-                <span className="h-1.5 w-1.5 animate-pulse-glow rounded-full bg-cyan-400 [animation-delay:0.4s]" />
+              <div className="flex items-center gap-1.5 rounded-[20px] bg-[#2a2a2e] px-5 py-4">
+                <span className="h-2 w-2 animate-pulse-glow rounded-full bg-zinc-400" />
+                <span className="h-2 w-2 animate-pulse-glow rounded-full bg-zinc-400 [animation-delay:0.2s]" />
+                <span className="h-2 w-2 animate-pulse-glow rounded-full bg-zinc-400 [animation-delay:0.4s]" />
               </div>
             </div>
           )}
         </div>
 
         {/* Composer */}
-        <div className="glass-strong shrink-0 border-t border-white/5 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
+        <div className="shrink-0 bg-gradient-to-t from-black via-black/95 to-transparent px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-6 sm:pb-4">
           {/* Área A+B+C: controles de generación de imagen, agrupados visualmente aparte del chat —
               colapsado por defecto (punto 33): "Crear imagen" no compite con el chat normal hasta
               que el usuario lo abre a propósito. */}
-          {imageEnabled && !showImagePanel && (
-            <button
-              onClick={() => setShowImagePanel(true)}
-              className="mb-2.5 flex items-center gap-1.5 rounded-full border border-cyan-400/15 bg-cyan-400/[0.04] px-3.5 py-1.5 text-xs font-semibold text-cyan-300 transition-colors hover:bg-cyan-400/10"
-            >
-              ✨ Crear imagen
-            </button>
-          )}
           {imageEnabled && showImagePanel && (
-            <div className="mb-2.5 rounded-xl border border-cyan-400/10 bg-cyan-400/[0.03] p-2.5">
+            <div className="mb-2.5 rounded-2xl border border-white/10 bg-[#1c1c1f] p-3">
               <div className="flex items-center justify-between gap-2 pb-1.5">
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-cyan-300/80">
                   Crear imagen
@@ -1133,7 +1115,32 @@ export default function ChatClient({ initialId }: { initialId: string }) {
                   </div>
                 </div>
               )}
-              <div className="flex items-center gap-2 sm:gap-3">
+              {/* Accesos rápidos sobre la caja de mensaje */}
+              <div className="scroll-neon -mx-1 mb-2.5 flex gap-2 overflow-x-auto px-1">
+                <Link
+                  href={`/personajes/${character.id}`}
+                  className="flex shrink-0 items-center gap-2 rounded-xl bg-[#1f1f23] px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#2a2a2e]"
+                >
+                  <UserRound className="h-4 w-4" />
+                  Perfil
+                </Link>
+                <Link
+                  href="/planes"
+                  className="flex shrink-0 items-center gap-2 rounded-xl bg-gradient-to-r from-violet-700 to-fuchsia-600 px-3.5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                >
+                  <Crown className="h-4 w-4" />
+                  Planes
+                </Link>
+                <Link
+                  href="/personajes"
+                  className="flex shrink-0 items-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-sky-500 px-3.5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                >
+                  <Users className="h-4 w-4" />
+                  Personajes
+                </Link>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-700/80 bg-[#1c1c1f] px-3 pb-2.5 pt-3 focus-within:border-zinc-500">
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -1141,20 +1148,33 @@ export default function ChatClient({ initialId }: { initialId: string }) {
                   type="text"
                   maxLength={4000}
                   enterKeyHint="send"
-                  placeholder="Escribe un mensaje…"
-                  className="min-w-0 flex-1 rounded-full border border-cyan-400/15 bg-black/30 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 backdrop-blur-md focus:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+                  placeholder="Enviar un mensaje"
+                  className="w-full bg-transparent px-1.5 pb-3 text-[16px] text-white placeholder:text-zinc-500 focus:outline-none"
                 />
-
-                <button
-                  onClick={sendMessage}
-                  disabled={isTyping}
-                  className="glow-button flex shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 p-2.5 text-white transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="Enviar mensaje"
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.126A59.768 59.768 0 0 1 21.485 12 59.77 59.77 0 0 1 3.27 20.876L5.999 12Zm0 0h7.5" />
-                  </svg>
-                </button>
+                <div className="flex items-center gap-2">
+                  {imageEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => setShowImagePanel((v) => !v)}
+                      className="rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 p-[1.5px]"
+                    >
+                      <span className="flex items-center gap-1.5 rounded-[10px] bg-[#1c1c1f] px-3 py-1.5 text-sm font-medium text-white">
+                        <ImagePlus className="h-4 w-4" />
+                        Imagen de IA
+                      </span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => sendMessage()}
+                    disabled={isTyping || !input.trim()}
+                    className={`ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed ${
+                      input.trim() && !isTyping ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-600 text-zinc-900"
+                    }`}
+                    aria-label="Enviar mensaje"
+                  >
+                    <SendHorizontal className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
             </>
           )}

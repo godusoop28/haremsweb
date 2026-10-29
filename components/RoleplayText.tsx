@@ -29,11 +29,11 @@ export default function RoleplayText({ text, variant = "ai" }: { text: string; v
     .split(/\n\s*\n|\n/)
     .map((p) => p.trim())
     .filter(Boolean);
-  const actionClass = variant === "user" ? "italic text-cyan-200/60" : "italic text-slate-400";
-  const speechClass = variant === "user" ? "text-cyan-50" : "text-slate-100";
+  const actionClass = variant === "user" ? "italic text-white/60" : "italic text-zinc-400";
+  const speechClass = "text-white";
 
   return (
-    <div className="space-y-3 whitespace-normal">
+    <div className="space-y-4 whitespace-normal">
       {paragraphs.map((paragraph, pIdx) => (
         <p key={pIdx}>
           {parseSegments(paragraph).map((segment, sIdx) => (

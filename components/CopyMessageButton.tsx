@@ -21,11 +21,11 @@ export default function CopyMessageButton({ text }: { text: string }) {
     <button
       type="button"
       onClick={copy}
-      className="rounded-md p-1 text-slate-500 transition-colors hover:bg-white/5 hover:text-slate-200"
+      className="rounded-md p-1.5 text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
       title={copied ? "Copiado" : "Copiar mensaje"}
       aria-label="Copiar mensaje"
     >
-      {copied ? <Check className="h-3.5 w-3.5 text-cyan-400" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
     </button>
   );
 }
